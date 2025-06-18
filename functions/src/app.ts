@@ -9,7 +9,7 @@ import { producerRouter } from './routes/producer.route';
 const app = express();
 app.use(cors());
 app.use(express.json());
-// app.use(authMiddleware); // Decode token if present
+
 
 app.use('/public', publicRouter);
 // app.use('/user', userRouter);
