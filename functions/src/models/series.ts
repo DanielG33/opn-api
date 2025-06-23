@@ -16,3 +16,12 @@ export interface Series {
     createdAt: string;
     updatedAt: string;
 }
+
+export interface Season {
+  id?: string;
+  index: number;
+  title?: string;
+  description?: string;
+  createdAt: number;
+  updatedAt: number;
+}

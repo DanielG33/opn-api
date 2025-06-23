@@ -11,9 +11,9 @@ app.use(cors());
 app.use(express.json());
 
 
-app.use('/public', publicRouter);
+app.use('/v1/public', publicRouter);
 // app.use('/user', userRouter);
-app.use('/producer', producerRouter);
+app.use('/v1/producer', producerRouter);
 // app.use('/admin', adminRouter);
 
 export default app;

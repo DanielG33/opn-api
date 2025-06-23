@@ -32,6 +32,8 @@ export const createSeries = async (raw: any, producerId: string, producer: any) 
   const series = {
     ...raw,
     producerId,
+    producerName: producer.name,
+    episodes: 0,
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };

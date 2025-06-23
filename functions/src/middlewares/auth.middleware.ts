@@ -5,8 +5,6 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
   let idToken;
   const authHeader: string | undefined = req.headers.authorization;
 
-  console.log(authHeader)
-
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     res.status(403).send("Unauthorized");
     return;
