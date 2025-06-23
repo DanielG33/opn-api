@@ -11,7 +11,6 @@ export interface Asset {
 };
 
 export interface AssetImage extends Asset {
-    type: 'image',
     format: string,
     alt?: string,
     extension: string,

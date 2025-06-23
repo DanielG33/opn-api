@@ -18,6 +18,7 @@ import {
 } from '../controllers/producer/episode.controller';
 import { listSeasons, getSeason, createSeasonController, updateSeasonController, deleteSeasonController } from '../controllers/producer/season.controllers';
 import { getProfileMe, getProfileProducer } from '../controllers/producer/account.controller';
+import { listSponsors, getSponsor, createSponsorController, updateSponsorController, deleteSponsorController } from '../controllers/producer/sponsor.controller';
 
 export const producerRouter = Router();
 
@@ -35,6 +36,13 @@ producerRouter.get('/series/:id', getProducerSeries);
 producerRouter.patch('/series/:id', updateProducerSeries);
 // producerRouter.delete('/series/:id', deleteProducerSeries);
 // producerRouter.post('/series/:id/submit', submitProducerSeries);
+
+// Sponsors routes
+producerRouter.get('/series/:seriesId/sponsors', listSponsors);
+producerRouter.get('/series/:seriesId/sponsors/:sponsorId', getSponsor);
+producerRouter.post('/series/:seriesId/sponsors', createSponsorController);
+producerRouter.patch('/series/:seriesId/sponsors/:sponsorId', updateSponsorController);
+producerRouter.delete('/series/:seriesId/sponsors/:sponsorId', deleteSponsorController);
 
 // Seasons routes
 producerRouter.get('/series/:seriesId/seasons', listSeasons);
