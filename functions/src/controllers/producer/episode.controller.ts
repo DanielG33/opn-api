@@ -7,6 +7,7 @@ import {
   deleteEpisode,
 } from "../../services/episode.service";
 import {db} from "../../firebase";
+import { getSeasonById } from "../../services/season.service";
 
 export const listProducerEpisodes = async (req: Request, res: Response) => {
   const uid = req.user?.uid as string;
@@ -44,7 +45,16 @@ export const getProducerEpisode = async (req: Request, res: Response) => {
 
 export const createProducerEpisode = async (req: Request, res: Response) => {
   try {
-    const episode = await createEpisode(req.body);
+    const body = req.body;
+    const { seriesId, seasonId } = body;
+
+    const season = await getSeasonById(seriesId, seasonId);
+    
+    const data = {
+      ...body,
+      seasonTitle: season?.title
+    }
+    const episode = await createEpisode(data);
     res.status(201).json({success: true, data: episode});
   } catch (err: any) {
     res.status(422).json({
