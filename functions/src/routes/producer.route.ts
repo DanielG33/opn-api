@@ -20,6 +20,7 @@ import {listSeasons, getSeason, createSeasonController, updateSeasonController, 
 import {getProfileMe, getProfileProducer} from "../controllers/producer/account.controller";
 import {listSponsors, getSponsor, createSponsorController, updateSponsorController, deleteSponsorController} from "../controllers/producer/sponsor.controller";
 import {createAsset, listAssets} from "../controllers/producer/asset.controller";
+import { updateHeroBanner } from "../controllers/producer/series-page.controller";
 
 export const producerRouter = Router();
 
@@ -66,3 +67,6 @@ producerRouter.delete("/episodes/:id", deleteProducerEpisode);
 // Account routes
 producerRouter.get("/account/producer", getProfileProducer);
 producerRouter.get("/account/me", getProfileMe);
+
+// Series page
+producerRouter.put("/series-page/hero-banner", updateHeroBanner);
