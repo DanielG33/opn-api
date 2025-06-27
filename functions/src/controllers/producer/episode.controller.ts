@@ -52,7 +52,8 @@ export const createProducerEpisode = async (req: Request, res: Response) => {
     
     const data = {
       ...body,
-      seasonTitle: season?.title
+      seasonTitle: season?.title,
+      seasonIndex: season?.index,
     }
     const episode = await createEpisode(data);
     res.status(201).json({success: true, data: episode});

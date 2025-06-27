@@ -9,11 +9,8 @@ export interface Episode {
     title: string,
     description: string,
     seasonId: string,
-    season: {
-        index: number,
-        title: string,
-        description?: string,
-    },
+    seasonTitle: string,
+    seasonIndex: number,
     episodeNumber: number,
     category?: string,
     subcategories?: string[],
