@@ -1,3 +1,5 @@
+import {AssetRef} from "./asset";
+
 export interface Sponsor {
     id?: string;
     name: string;
@@ -7,4 +9,10 @@ export interface Sponsor {
     bgOpacity?: string;
     createdAt: number;
     updatedAt: number;
+}
+
+export interface UploadSponsorInput {
+    name: string;
+    link?: string;
+    logo: AssetRef
 }

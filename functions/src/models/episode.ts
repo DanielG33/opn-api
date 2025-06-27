@@ -1,6 +1,6 @@
-import { AssetImage } from "./assets";
-import { Producer } from "./producer";
-import { Series } from "./series";
+import {AssetImage} from "./asset";
+import {Producer} from "./producer";
+import {Series} from "./series";
 
 export interface Episode {
     id?: string,
@@ -18,7 +18,7 @@ export interface Episode {
     category?: string,
     subcategories?: string[],
     thumbnail: AssetImage,
-    platform: 'vimeo',
+    platform: "vimeo",
     videoUrl: string,
     duration: number,
     sponsorLabel?: string,

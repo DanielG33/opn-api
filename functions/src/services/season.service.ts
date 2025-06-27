@@ -1,4 +1,4 @@
-import { db } from '../firebase';
+import {db} from "../firebase";
 
 export interface Season {
   id?: string;
@@ -11,32 +11,32 @@ export interface Season {
 
 export const getSeasonsBySeries = async (seriesId: string): Promise<Season[]> => {
   const snapshot = await db.collection(`series/${seriesId}/seasons`).get();
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Season));
+  return snapshot.docs.map((doc) => ({id: doc.id, ...doc.data()} as Season));
 };
 
 export const getSeasonById = async (seriesId: string, seasonId: string): Promise<Season | null> => {
   const doc = await db.collection(`series/${seriesId}/seasons`).doc(seasonId).get();
-  return doc.exists ? ({ id: doc.id, ...doc.data() } as Season) : null;
+  return doc.exists ? ({id: doc.id, ...doc.data()} as Season) : null;
 };
 
 export const createSeason = async (seriesId: string, data: Partial<Season>): Promise<Season> => {
   const timestamp = Date.now();
   const season: Season = {
     index: data.index || 1,
-    title: data.title || `Season ${data.index}`,
-    description: data.description || '',
+    title: data.title || `Season ${data.index || 1}`,
+    description: data.description || "",
     createdAt: timestamp,
-    updatedAt: timestamp
+    updatedAt: timestamp,
   };
   const ref = await db.collection(`series/${seriesId}/seasons`).add(season);
-  return { id: ref.id, ...season };
+  return {id: ref.id, ...season};
 };
 
 export const updateSeason = async (seriesId: string, seasonId: string, data: Partial<Season>): Promise<Season> => {
   const ref = db.collection(`series/${seriesId}/seasons`).doc(seasonId);
-  await ref.update({ ...data, updatedAt: Date.now() });
+  await ref.update({...data, updatedAt: Date.now()});
   const updated = await ref.get();
-  return { id: updated.id, ...updated.data() } as Season;
+  return {id: updated.id, ...updated.data()} as Season;
 };
 
 export const deleteSeason = async (seriesId: string, seasonId: string): Promise<void> => {

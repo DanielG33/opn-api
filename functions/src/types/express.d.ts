@@ -1,4 +1,4 @@
-import 'express';
+import "express";
 
 declare global {
   namespace Express {
@@ -6,7 +6,7 @@ declare global {
       user?: {
         uid: string;
         email?: string;
-        role: 'user' | 'producer' | 'admin';
+        role: "user" | "producer" | "admin";
       };
     }
   }

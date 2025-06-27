@@ -1,4 +1,4 @@
-import { Producer } from "./producer";
+import {Producer} from "./producer";
 
 export interface User {
     id: string;

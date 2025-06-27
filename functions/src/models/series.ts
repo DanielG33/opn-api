@@ -1,5 +1,5 @@
-import { AssetImage } from "./assets";
-import { Producer } from "./producer";
+import {AssetImage} from "./asset";
+import {Producer} from "./producer";
 
 export interface Series {
     id: string;

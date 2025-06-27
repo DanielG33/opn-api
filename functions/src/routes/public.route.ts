@@ -1,10 +1,10 @@
-import { Router } from 'express';
-import { fetchCategories } from '../controllers/category.controller';
+import {Router} from "express";
+import {fetchCategories} from "../controllers/category.controller";
 
 export const publicRouter = Router();
 
-publicRouter.get('/', (req, res) => {
-  res.json({ message: `Hello there!` });
+publicRouter.get("/", (req, res) => {
+  res.json({message: "Hello there!"});
 });
 
-publicRouter.get('/categories', fetchCategories);
+publicRouter.get("/categories", fetchCategories);

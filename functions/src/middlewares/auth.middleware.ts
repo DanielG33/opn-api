@@ -1,8 +1,7 @@
-import { Request, Response, NextFunction } from 'express';
-import * as admin from 'firebase-admin';
+import {Request, Response, NextFunction} from "express";
+import * as admin from "firebase-admin";
 
 export const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
-  let idToken;
   const authHeader: string | undefined = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -10,14 +9,14 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
     return;
   }
 
-  idToken = authHeader.split("Bearer ")[1];
+  const idToken = authHeader.split("Bearer ")[1];
 
   // TODO: Remove this before deploying
-  if (idToken == 'testing') {
+  if (idToken == "testing") {
     req.user = {
-      uid: 'vUoI2yv5K6cPqBrAOD486OO1ScJ3',
-      email: 'danielguzman9633@gmail.com',
-      role: 'producer'
+      uid: "vUoI2yv5K6cPqBrAOD486OO1ScJ3",
+      email: "danielguzman9633@gmail.com",
+      role: "producer",
     };
 
     next();
@@ -29,7 +28,7 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
     req.user = {
       uid: decoded.uid,
       email: decoded.email,
-      role: decoded.role || 'user'
+      role: decoded.role || "user",
     };
     next();
     return;
