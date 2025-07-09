@@ -20,7 +20,7 @@ import {listSeasons, getSeason, createSeasonController, updateSeasonController, 
 import {getProfileMe, getProfileProducer} from "../controllers/producer/account.controller";
 import {listSponsors, getSponsor, createSponsorController, updateSponsorController, deleteSponsorController} from "../controllers/producer/sponsor.controller";
 import {createAsset, listAssets} from "../controllers/producer/asset.controller";
-import { updateHeroBanner } from "../controllers/producer/series-page.controller";
+import { getBlocks, updateAds, updateBanners, updateBlocksOrder, updateCta, updateDetails, updateEpisodeSliders, updateGalleries, updateHeroBanner, updateNetworks, updatePoster, updateSponsorSliders } from "../controllers/producer/series-page.controller";
 
 export const producerRouter = Router();
 
@@ -47,8 +47,8 @@ producerRouter.patch("/series/:seriesId/seasons/:seasonId", updateSeasonControll
 producerRouter.delete("/series/:seriesId/seasons/:seasonId", deleteSeasonController);
 
 // Assets routes
-producerRouter.get("/series/:id/assets", listAssets);
-producerRouter.post("/series/:id/assets", createAsset);
+producerRouter.get("/series/:seriesId/assets", listAssets);
+producerRouter.post("/series/:seriesId/assets", createAsset);
 
 // Sponsors routes
 producerRouter.get("/series/:seriesId/sponsors", listSponsors);
@@ -69,4 +69,15 @@ producerRouter.get("/account/producer", getProfileProducer);
 producerRouter.get("/account/me", getProfileMe);
 
 // Series page
+producerRouter.get("/series-page/blocks", getBlocks);
+producerRouter.put("/series-page/blocks", updateBlocksOrder);
 producerRouter.put("/series-page/hero-banner", updateHeroBanner);
+producerRouter.put("/series-page/poster", updatePoster);
+producerRouter.put("/series-page/cta", updateCta);
+producerRouter.put("/series-page/details", updateDetails);
+producerRouter.put("/series-page/social-networks", updateNetworks);
+producerRouter.put("/series-page/episodes-sliders", updateEpisodeSliders);
+producerRouter.put("/series-page/galleries", updateGalleries);
+producerRouter.put("/series-page/banners", updateBanners);
+producerRouter.put("/series-page/ads", updateAds);
+producerRouter.put("/series-page/sponsors-slider", updateSponsorSliders);
