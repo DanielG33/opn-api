@@ -1,24 +1,36 @@
 // src/services/episode.service.ts
-import {db} from "../firebase";
+import { db } from "../firebase";
 // import { format } from 'date-fns';
 // import cryptoRandomString from 'crypto-random-string';
 
 // TODO: enable draft system
 export const getEpisodesByFilters = async (filters: { [key: string]: string }) => {
-//   let query: FirebaseFirestore.Query = db.collection('episodes-draft');
+  //   let query: FirebaseFirestore.Query = db.collection('episodes-draft');
   let query: FirebaseFirestore.Query = db.collection("episodes");
   Object.entries(filters).forEach(([key, value]) => {
     if (value) query = query.where(key, "==", value);
   });
 
   const snapshot = await query.get();
-  return snapshot.docs.map((doc) => ({id: doc.id, ...doc.data()}));
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 };
 
 export const getEpisodeById = async (id: string) => {
-//   const doc = await db.collection('episodes-draft').doc(id).get();
+  //   const doc = await db.collection('episodes-draft').doc(id).get();
   const doc = await db.collection("episodes").doc(id).get();
-  return doc.exists ? {id: doc.id, ...doc.data()} : null;
+  return doc.exists ? { id: doc.id, ...doc.data() } : null;
+};
+
+export const getEpisodeListByIds = async (ids: string[]) => {
+  if (ids.length === 0) return [];
+
+  const results = await Promise.all(
+    ids.map(async id => {
+      return getEpisodeById(id);
+    })
+  );
+
+  return results.filter((episode) => Boolean(episode));
 };
 
 // TODO: implement season data
@@ -46,19 +58,19 @@ export const createEpisode = async (raw: any) => {
 
   //   const docRef = await db.collection('episodes-draft').add(episode);
   const docRef = await db.collection("episodes").add(episode);
-  return {id: docRef.id, ...episode};
+  return { id: docRef.id, ...episode };
 };
 
 export const updateEpisode = async (id: string, data: any) => {
-//   const ref = db.collection('episodes-draft').doc(id);
+  //   const ref = db.collection('episodes-draft').doc(id);
   const ref = db.collection("episodes").doc(id);
-  await ref.update({...data, updatedAt: Date.now()});
+  await ref.update({ ...data, updatedAt: Date.now() });
   const updated = await ref.get();
-  return {id: updated.id, ...updated.data()};
+  return { id: updated.id, ...updated.data() };
 };
 
 export const deleteEpisode = async (id: string) => {
-//   await db.collection('episodes-draft').doc(id).delete();
+  //   await db.collection('episodes-draft').doc(id).delete();
   await db.collection("episodes").doc(id).delete();
-  return {id};
+  return { id };
 };
