@@ -72,7 +72,9 @@ export const getPublicSeriesById = async (seriesId: string) => {
   data.sponsorsSlider = {
     title: 'Sponsors carousel',
     id: 'sponsors',
-    items: (data.sponsorsSlider?.items || []).filter((item: any) => item.checked && sponsors[item.id])
+    items: (data.sponsorsSlider?.items || [])
+      .filter((item: any) => item.checked && sponsors[item.id])
+      .map((item: any) => sponsors[item.id])
   };
 
   data['blocks'] = blocks;
