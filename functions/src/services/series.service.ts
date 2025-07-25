@@ -40,8 +40,34 @@ export const getPublicSeriesById = async (seriesId: string) => {
     return acc;
   }, {});
 
+  const blocks = data.sectionsOrder.map((key: string) => {
+    if (key.startsWith('banner') && data.banners[key]) {
+      return {
+        ...data.banners[key],
+        type: 'banner'
+      }
+    } else if (key.startsWith('slider') && data.episodes_sliders[key]) {
+      return {
+        ...data.episodes_sliders[key],
+        type: 'slider'
+      }
+    } else if (key.startsWith('gallery') && data.galleries[key]) {
+      return {
+        ...data.galleries[key],
+        type: 'gallery'
+      }
+    } else {
+      return null
+    }
+  })
+
   const seasonsSnap = await db.collection(`series/${seriesId}/seasons`).get();
   data.seasons = seasonsSnap.docs.map(s => ({ id: s.id, ...s.data() }));
+
+  // TODO: return instead an array of all the blocks, based on sectionsOrder, with each block type for dynamic rendering
+  data.episodes_sliders = Object.values(data.episodes_sliders);
+  data.banners = Object.values(data.banners);
+  data.galleries = Object.values(data.galleries);
 
   data.sponsorsSlider = {
     title: 'Sponsors carousel',
@@ -49,11 +75,7 @@ export const getPublicSeriesById = async (seriesId: string) => {
     items: (data.sponsorsSlider?.items || []).filter((item: any) => item.checked && sponsors[item.id])
   };
 
-  data.gallery = {
-    ...(data.gallery || null),
-    title: 'gallery',
-    id: 'gallery'
-  };
+  data['blocks'] = blocks;
 
   return data;
 };
