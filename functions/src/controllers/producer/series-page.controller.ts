@@ -29,7 +29,7 @@ export const updateBlocksOrder = async (req: Request, res: Response) => {
     }
 
     await updateSeriesPageBlock(seriesId, targetValue, { mergeFields: ["sectionsOrder"] });
-    return res.json({ success: true, data: targetValue });
+    return res.json({ success: true, data: targetValue, message: 'Updated successfully' });
 }
 
 export const updateHeroBanner = async (req: Request, res: Response) => {
@@ -41,7 +41,7 @@ export const updateHeroBanner = async (req: Request, res: Response) => {
     }
 
     await updateSeriesPageBlock(seriesId, targetValue)
-    return res.json({ success: true, data: targetValue });
+    return res.json({ success: true, data: targetValue, message: 'Updated successfully' });
 }
 
 export const updatePoster = async (req: Request, res: Response) => {
@@ -53,7 +53,7 @@ export const updatePoster = async (req: Request, res: Response) => {
     }
 
     await updateSeriesPageBlock(seriesId, targetValue)
-    return res.json({ success: true, data: targetValue });
+    return res.json({ success: true, data: targetValue, message: 'Updated successfully' });
 }
 
 export const updateCta = async (req: Request, res: Response) => {
@@ -65,7 +65,7 @@ export const updateCta = async (req: Request, res: Response) => {
     }
 
     await updateSeriesPageBlock(seriesId, targetValue)
-    return res.json({ success: true, data: targetValue });
+    return res.json({ success: true, data: targetValue, message: 'Updated successfully' });
 }
 
 export const updateDetails = async (req: Request, res: Response) => {
@@ -77,7 +77,7 @@ export const updateDetails = async (req: Request, res: Response) => {
     }
 
     await updateSeriesPageBlock(seriesId, targetValue)
-    return res.json({ success: true, data: targetValue });
+    return res.json({ success: true, data: targetValue, message: 'Updated successfully' });
 }
 
 export const updateNetworks = async (req: Request, res: Response) => {
@@ -89,7 +89,7 @@ export const updateNetworks = async (req: Request, res: Response) => {
     }
 
     await updateSeriesPageBlock(seriesId, targetValue)
-    return res.json({ success: true, data: targetValue });
+    return res.json({ success: true, data: targetValue, message: 'Updated successfully' });
 }
 
 export const updateEpisodeSliders = async (req: Request, res: Response) => {
@@ -116,7 +116,7 @@ export const updateEpisodeSliders = async (req: Request, res: Response) => {
     };
 
     await updateSeriesPageBlock(seriesId, targetValue, { mergeFields: ['episodes_sliders', 'sectionsOrder'] })
-    return res.json({ success: true, data: targetValue });
+    return res.json({ success: true, data: targetValue, message: 'Updated successfully' });
 }
 
 export const updateGalleries = async (req: Request, res: Response) => {
@@ -142,7 +142,7 @@ export const updateGalleries = async (req: Request, res: Response) => {
     };
 
     await updateSeriesPageBlock(seriesId, targetValue, { mergeFields: ['galleries', 'sectionsOrder'] });
-    return res.json({ success: true, data: targetValue });
+    return res.json({ success: true, data: targetValue, message: 'Updated successfully' });
 }
 
 export const updateBanners = async (req: Request, res: Response) => {
@@ -168,7 +168,7 @@ export const updateBanners = async (req: Request, res: Response) => {
     };
 
     await updateSeriesPageBlock(seriesId, targetValue, { mergeFields: ['banners', 'sectionsOrder'] });
-    return res.json({ success: true, data: targetValue });
+    return res.json({ success: true, data: targetValue, message: 'Updated successfully' });
 }
 
 export const updateAds = async (req: Request, res: Response) => {
@@ -187,7 +187,7 @@ export const updateAds = async (req: Request, res: Response) => {
     };
 
     await updateSeriesPageBlock(seriesId, targetValue, { mergeFields: ['ads'] });
-    return res.json({ success: true, data: targetValue });
+    return res.json({ success: true, data: targetValue, message: 'Updated successfully' });
 }
 
 export const updateSponsorSliders = async (req: Request, res: Response) => {
@@ -199,5 +199,5 @@ export const updateSponsorSliders = async (req: Request, res: Response) => {
     }
 
     await updateSeriesPageBlock(seriesId, targetValue, { mergeFields: ["sponsorsSlider"] })
-    return res.json({ success: true, data: targetValue });
+    return res.json({ success: true, data: targetValue, message: 'Updated successfully' });
 }

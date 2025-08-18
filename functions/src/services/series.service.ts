@@ -29,6 +29,7 @@ export const getAllPublicSeries = async () => {
 };
 
 export const getPublicSeriesById = async (seriesId: string) => {
+
   const doc = await db.collection('series').doc(seriesId).get();
   if (!doc.exists) return null;
 
@@ -40,21 +41,25 @@ export const getPublicSeriesById = async (seriesId: string) => {
     return acc;
   }, {});
 
-  const blocks = data.sectionsOrder.map((key: string) => {
+  const blocks = data.sectionsOrder?.map((key: string) => {
     if (key.startsWith('banner') && data.banners[key]) {
       return {
         ...data.banners[key],
         type: 'banner'
       }
     } else if (key.startsWith('slider') && data.episodes_sliders[key]) {
+      const slider = data.episodes_sliders[key];
       return {
-        ...data.episodes_sliders[key],
-        type: 'slider'
+        ...slider,
+        type: 'slider',
+        sponsor: slider.sponsor ? sponsors[slider.sponsor] : null
       }
     } else if (key.startsWith('gallery') && data.galleries[key]) {
+      const gallery = data.galleries[key];
       return {
-        ...data.galleries[key],
-        type: 'gallery'
+        ...gallery,
+        type: 'gallery',
+        sponsor: gallery.sponsor ? sponsors[gallery.sponsor] : null
       }
     } else {
       return null
@@ -65,9 +70,14 @@ export const getPublicSeriesById = async (seriesId: string) => {
   data.seasons = seasonsSnap.docs.map(s => ({ id: s.id, ...s.data() }));
 
   // TODO: return instead an array of all the blocks, based on sectionsOrder, with each block type for dynamic rendering
-  data.episodes_sliders = Object.values(data.episodes_sliders);
-  data.banners = Object.values(data.banners);
-  data.galleries = Object.values(data.galleries);
+  if (data.episodes_sliders)
+    data.episodes_sliders = Object.values(data.episodes_sliders);
+  
+  if(data.banners)
+    data.banners = Object.values(data.banners);
+
+  if (data.galleries)
+    data.galleries = Object.values(data.galleries);
 
   data.sponsorsSlider = {
     title: 'Sponsors carousel',
@@ -140,7 +150,7 @@ export const updateSeriesById = async (id: string, updates: any, producerId: str
 };
 
 export const deleteSeriesById = async (id: string, producerId: string) => {
-  const docRef = db.collection("series-draft").doc(id);
+  const docRef = db.collection("series").doc(id);
   const doc = await docRef.get();
   if (!doc.exists || doc.data()?.producerId !== producerId) return false;
 

@@ -1,12 +1,12 @@
-import {Router} from "express";
-import {fetchCategories} from "../controllers/category.controller";
-import {authMiddleware} from "../middlewares/auth.middleware";
+import { Router } from "express";
+import { fetchCategories } from "../controllers/category.controller";
+import { authMiddleware } from "../middlewares/auth.middleware";
 import {
   listProducerSeries,
   getProducerSeries,
   createProducerSeries,
   updateProducerSeries,
-  // deleteProducerSeries,
+  deleteProducerSeries,
   // submitProducerSeries,
 } from "../controllers/producer/series.controller";
 import {
@@ -16,19 +16,55 @@ import {
   listProducerEpisodes,
   updateProducerEpisode,
 } from "../controllers/producer/episode.controller";
-import {listSeasons, getSeason, createSeasonController, updateSeasonController, deleteSeasonController} from "../controllers/producer/season.controllers";
-import {getProfileMe, getProfileProducer} from "../controllers/producer/account.controller";
-import {listSponsors, getSponsor, createSponsorController, updateSponsorController, deleteSponsorController} from "../controllers/producer/sponsor.controller";
-import {createAsset, listAssets} from "../controllers/producer/asset.controller";
-import { getBlocks, updateAds, updateBanners, updateBlocksOrder, updateCta, updateDetails, updateEpisodeSliders, updateGalleries, updateHeroBanner, updateNetworks, updatePoster, updateSponsorSliders } from "../controllers/producer/series-page.controller";
+import {
+  listSeasons,
+  getSeason,
+  createSeasonController,
+  updateSeasonController,
+  deleteSeasonController
+} from "../controllers/producer/season.controllers";
+import {
+  getProfileMe,
+  getProfileProducer
+} from "../controllers/producer/account.controller";
+import {
+  listSponsors,
+  getSponsor,
+  createSponsorController,
+  updateSponsorController,
+  deleteSponsorController
+} from "../controllers/producer/sponsor.controller";
+import {
+  createAsset,
+  listAssets,
+  updateAsset,
+  updateAssetReferences
+} from "../controllers/producer/asset.controller";
+import {
+  getBlocks,
+  updateAds,
+  updateBanners,
+  updateBlocksOrder,
+  updateCta,
+  updateDetails,
+  updateEpisodeSliders,
+  updateGalleries,
+  updateHeroBanner,
+  updateNetworks,
+  updatePoster,
+  updateSponsorSliders
+} from "../controllers/producer/series-page.controller";
 
 export const producerRouter = Router();
 
 producerRouter.use(authMiddleware);
 
 producerRouter.get("/", (req, res) => {
-  res.json({message: "Hello there!"});
+  res.json({ message: "Hello there!" });
 });
+
+// CMS pages routes
+
 
 // Series routes
 producerRouter.get("/categories", fetchCategories);
@@ -36,7 +72,7 @@ producerRouter.get("/series", listProducerSeries);
 producerRouter.post("/series", createProducerSeries);
 producerRouter.get("/series/:id", getProducerSeries);
 producerRouter.patch("/series/:id", updateProducerSeries);
-// producerRouter.delete('/series/:id', deleteProducerSeries);
+producerRouter.delete('/series/:id', deleteProducerSeries);
 // producerRouter.post('/series/:id/submit', submitProducerSeries);
 
 // Seasons routes
@@ -49,12 +85,14 @@ producerRouter.delete("/series/:seriesId/seasons/:seasonId", deleteSeasonControl
 // Assets routes
 producerRouter.get("/series/:seriesId/assets", listAssets);
 producerRouter.post("/series/:seriesId/assets", createAsset);
+producerRouter.put("/series/:seriesId/assets/:assetId", updateAsset);
+producerRouter.put("/series/:seriesId/assets/:assetId/update-references", updateAssetReferences);
 
 // Sponsors routes
 producerRouter.get("/series/:seriesId/sponsors", listSponsors);
 producerRouter.get("/series/:seriesId/sponsors/:sponsorId", getSponsor);
 producerRouter.post("/series/:seriesId/sponsors", createSponsorController);
-producerRouter.patch("/series/:seriesId/sponsors/:sponsorId", updateSponsorController);
+producerRouter.put("/series/:seriesId/sponsors/:sponsorId", updateSponsorController);
 producerRouter.delete("/series/:seriesId/sponsors/:sponsorId", deleteSponsorController);
 
 // Episode routes

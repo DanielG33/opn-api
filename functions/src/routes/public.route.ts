@@ -1,7 +1,7 @@
 import {Router} from "express";
 import {fetchCategories} from "../controllers/category.controller";
 import { getSeriesById } from "../controllers/public/series.controller";
-import { getEpisodesById } from "../controllers/public/episodes.controller";
+import { getEpisode, getEpisodesById } from "../controllers/public/episodes.controller";
 
 export const publicRouter = Router();
 
@@ -13,3 +13,4 @@ publicRouter.get("/categories", fetchCategories);
 
 publicRouter.get("/series/:id", getSeriesById);
 publicRouter.get("/episodes", getEpisodesById);
+publicRouter.get("/episodes/:id", getEpisode);
