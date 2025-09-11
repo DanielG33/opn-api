@@ -25,7 +25,8 @@ import {
 } from "../controllers/producer/season.controllers";
 import {
   getProfileMe,
-  getProfileProducer
+  getProfileProducer,
+  updateProfileMe
 } from "../controllers/producer/account.controller";
 import {
   listSponsors,
@@ -54,6 +55,19 @@ import {
   updatePoster,
   updateSponsorSliders
 } from "../controllers/producer/series-page.controller";
+import {
+  createSubcontentVideoController,
+  updateSubcontentVideoController,
+  deleteSubcontentVideoController,
+  getSubcontentVideosController,
+  getSubcontentVideoController,
+  createSubcontentSliderController,
+  updateSubcontentSliderController,
+  deleteSubcontentSliderController,
+  getSubcontentSlidersController,
+  addVideoToSliderController,
+  removeVideoFromSliderController
+} from "../controllers/producer/subcontent.controller";
 
 export const producerRouter = Router();
 
@@ -100,11 +114,13 @@ producerRouter.get("/episodes", listProducerEpisodes);
 producerRouter.post("/episodes", createProducerEpisode);
 producerRouter.get("/episodes/:id", getProducerEpisode);
 producerRouter.patch("/episodes/:id", updateProducerEpisode);
+producerRouter.put("/episodes/:id", updateProducerEpisode);
 producerRouter.delete("/episodes/:id", deleteProducerEpisode);
 
 // Account routes
 producerRouter.get("/account/producer", getProfileProducer);
 producerRouter.get("/account/me", getProfileMe);
+producerRouter.put("/account/me", updateProfileMe);
 
 // Series page
 producerRouter.get("/series-page/blocks", getBlocks);
@@ -119,3 +135,20 @@ producerRouter.put("/series-page/galleries", updateGalleries);
 producerRouter.put("/series-page/banners", updateBanners);
 producerRouter.put("/series-page/ads", updateAds);
 producerRouter.put("/series-page/sponsors-slider", updateSponsorSliders);
+
+// Subcontent Videos routes
+producerRouter.get("/episodes/:episodeId/subcontent-videos", getSubcontentVideosController);
+producerRouter.post("/episodes/:episodeId/subcontent-videos", createSubcontentVideoController);
+producerRouter.get("/episodes/:episodeId/subcontent-videos/:videoId", getSubcontentVideoController);
+producerRouter.put("/episodes/:episodeId/subcontent-videos/:videoId", updateSubcontentVideoController);
+producerRouter.delete("/episodes/:episodeId/subcontent-videos/:videoId", deleteSubcontentVideoController);
+
+// Subcontent Sliders routes
+producerRouter.get("/episodes/:episodeId/subcontent-sliders", getSubcontentSlidersController);
+producerRouter.post("/episodes/:episodeId/subcontent-sliders", createSubcontentSliderController);
+producerRouter.put("/episodes/:episodeId/subcontent-sliders/:sliderId", updateSubcontentSliderController);
+producerRouter.delete("/episodes/:episodeId/subcontent-sliders/:sliderId", deleteSubcontentSliderController);
+
+// Slider-Video relationship routes
+producerRouter.post("/episodes/:episodeId/subcontent-sliders/:sliderId/videos/:videoId", addVideoToSliderController);
+producerRouter.delete("/episodes/:episodeId/subcontent-sliders/:sliderId/videos/:videoId", removeVideoFromSliderController);
