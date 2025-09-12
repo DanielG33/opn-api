@@ -12,6 +12,7 @@ export interface Series {
     portraitCover?: Partial<AssetImage>,
     producerId: string;
     producer: Partial<Producer>;
+    type: 'season-based' | 'limited';
     sectionsOrder: string[];
     createdAt: string;
     updatedAt: string;

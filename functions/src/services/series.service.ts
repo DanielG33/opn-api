@@ -125,6 +125,7 @@ export const createSeries = async (raw: any, producerId: string, producer: any) 
     ...raw,
     producerId,
     producerName: producer.name,
+    type: raw.type || 'season-based', // Default to season-based for backward compatibility
     episodes: 0,
     createdAt: Date.now(),
     updatedAt: Date.now(),

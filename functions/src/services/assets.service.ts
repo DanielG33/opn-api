@@ -16,7 +16,11 @@ export const getAssetById = async (seriesId: string, assetId: string): Promise<A
 export const createAsset = async (input: UploadAssetInput): Promise<Asset> => {
   const {path, name, base64EncodedFile, size, seriesId} = input;
 
-  const filePath = `${path}/${name}`;
+  // Build the full file path with series-specific base path
+  const seriesBasePath = `series/${seriesId}`;
+  const fullPath = path ? `${seriesBasePath}/${path}` : seriesBasePath;
+  const filePath = `${fullPath}/${name}`;
+  
   const fileRef = bucket.file(filePath);
   const fileData = getBase64Data(base64EncodedFile);
   const mimeType = getBase64MimeType(base64EncodedFile) as string;

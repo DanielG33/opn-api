@@ -8,9 +8,9 @@ export interface Episode {
     series: Partial<Series>,
     title: string,
     description: string,
-    seasonId: string,
-    seasonTitle: string,
-    seasonIndex: number,
+    seasonId?: string, // Only for season-based series
+    seasonTitle?: string, // Only for season-based series
+    seasonIndex?: number, // Only for season-based series
     episodeNumber: number,
     category?: string,
     subcategories?: string[],

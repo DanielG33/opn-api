@@ -289,25 +289,35 @@ export const getEpisodeListByIds = async (ids: string[]) => {
   return results.filter((episode) => Boolean(episode));
 };
 
-// TODO: implement season data
+// TODO: implement season data  
 export const createEpisode = async (raw: any) => {
   const videoUrl = "https://vimeo.com/" + raw.videoUrl.split("/").pop();
 
-  // const seriesData = await db.collection('series').doc(raw.seriesId).get();
-  // const seasonData = await db.collection(`series/${raw.seriesId}/seasons`).doc(raw.seasonId).get();
+  // Get series data to check if it's season-based or limited
+  const seriesData = await db.collection('series').doc(raw.seriesId).get();
+  const series = seriesData.data();
+  const isSeasonBased = series?.type === 'season-based';
 
   const { subcontent, ...episodeData } = raw;
 
-  const episode = {
+  const episode: any = {
     ...episodeData,
     videoUrl,
-    // series: seriesData.data(),
-    // season: seasonData.data(),
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };
 
-  //   const docRef = await db.collection('episodes-draft').add(episode);
+  // Only add season-related data for season-based series
+  if (isSeasonBased && raw.seasonId) {
+    const seasonData = await db.collection(`series/${raw.seriesId}/seasons`).doc(raw.seasonId).get();
+    if (seasonData.exists) {
+      episode.season = seasonData.data();
+    }
+  } else {
+    // For limited series, ensure seasonId is not included
+    delete episode.seasonId;
+  }
+
   const docRef = await db.collection("episodes").add(episode);
   
   // Save subcontent sliders to the episode subcontent subcollection
@@ -324,7 +334,6 @@ export const createEpisode = async (raw: any) => {
 };
 
 export const updateEpisode = async (id: string, data: any) => {
-  //   const ref = db.collection('episodes-draft').doc(id);
   const ref = db.collection("episodes").doc(id);
   
   // Get the current episode
@@ -333,7 +342,27 @@ export const updateEpisode = async (id: string, data: any) => {
     throw new Error("Episode not found");
   }
   
+  const currentData = currentEpisode.data();
+  
+  // Get series data to check if it's season-based or limited
+  const seriesData = await db.collection('series').doc(currentData?.seriesId || data.seriesId).get();
+  const series = seriesData.data();
+  const isSeasonBased = series?.type === 'season-based';
+  
   const { subcontent, ...updateData } = data;
+  
+  // Handle season data based on series type
+  if (!isSeasonBased) {
+    // For limited series, remove season-related fields
+    delete updateData.seasonId;
+    delete updateData.season;
+  } else if (updateData.seasonId) {
+    // For season-based series, update season data if seasonId is provided
+    const seasonData = await db.collection(`series/${currentData?.seriesId || data.seriesId}/seasons`).doc(updateData.seasonId).get();
+    if (seasonData.exists) {
+      updateData.season = seasonData.data();
+    }
+  }
   
   // Update subcontent sliders if provided (store under this episode)
   let updatedSubcontent = [];

@@ -8,6 +8,7 @@ import {
 } from "../../services/episode.service";
 import {db} from "../../firebase";
 import { getSeasonById } from "../../services/season.service";
+import { getSeriesById } from "../../services/series.service";
 
 export const listProducerEpisodes = async (req: Request, res: Response) => {
   const uid = req.user?.uid as string;
@@ -48,17 +49,42 @@ export const createProducerEpisode = async (req: Request, res: Response) => {
     const body = req.body;
     const { seriesId, seasonId } = body;
 
-    const season = await getSeasonById(seriesId, seasonId);
-    
-    const data = {
-      ...body,
-      seasonTitle: season?.title,
-      seasonIndex: season?.index,
+    // Get series to check if it's season-based or limited
+    const series = await getSeriesById(seriesId);
+    if (!series) {
+      return res.status(404).json({
+        success: false,
+        error: { message: "Series not found" }
+      });
     }
+
+    let data = { ...body };
+
+    // Only fetch season data for season-based series
+    if (series.type === 'season-based' && seasonId) {
+      const season = await getSeasonById(seriesId, seasonId);
+      if (!season) {
+        return res.status(404).json({
+          success: false,
+          error: { message: "Season not found" }
+        });
+      }
+      data = {
+        ...data,
+        seasonTitle: season.title,
+        seasonIndex: season.index,
+      };
+    } else if (series.type === 'limited') {
+      // For limited series, remove any season-related fields
+      delete data.seasonId;
+      delete data.seasonTitle;
+      delete data.seasonIndex;
+    }
+
     const episode = await createEpisode(data);
-    res.status(201).json({success: true, data: episode});
+    return res.status(201).json({success: true, data: episode});
   } catch (err: any) {
-    res.status(422).json({
+    return res.status(422).json({
       success: false,
       error: {
         message: err.message,
@@ -70,10 +96,47 @@ export const createProducerEpisode = async (req: Request, res: Response) => {
 export const updateProducerEpisode = async (req: Request, res: Response) => {
   const {id} = req.params;
   try {
-    const updated = await updateEpisode(id, req.body);
-    res.json({success: true, data: updated});
+    const body = req.body;
+    const { seriesId, seasonId } = body;
+
+    let data = { ...body };
+
+    // If episode has seriesId, check series type to handle season data
+    if (seriesId) {
+      const series = await getSeriesById(seriesId);
+      if (!series) {
+        return res.status(404).json({
+          success: false,
+          error: { message: "Series not found" }
+        });
+      }
+
+      // Only fetch season data for season-based series
+      if (series.type === 'season-based' && seasonId) {
+        const season = await getSeasonById(seriesId, seasonId);
+        if (!season) {
+          return res.status(404).json({
+            success: false,
+            error: { message: "Season not found" }
+          });
+        }
+        data = {
+          ...data,
+          seasonTitle: season.title,
+          seasonIndex: season.index,
+        };
+      } else if (series.type === 'limited') {
+        // For limited series, remove any season-related fields
+        delete data.seasonId;
+        delete data.seasonTitle;
+        delete data.seasonIndex;
+      }
+    }
+
+    const updated = await updateEpisode(id, data);
+    return res.json({success: true, data: updated});
   } catch (err) {
-    res.status(422).json({
+    return res.status(422).json({
       success: false,
       error: {
         message: "Failed to update episode",
@@ -86,9 +149,9 @@ export const deleteProducerEpisode = async (req: Request, res: Response) => {
   const {id} = req.params;
   try {
     await deleteEpisode(id);
-    res.json({success: true, message: "Episode deleted"});
+    return res.json({success: true, message: "Episode deleted"});
   } catch (err) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: {
         message: "Failed to delete episode",
