@@ -2,6 +2,13 @@ import {AssetImage} from "./asset";
 import {Producer} from "./producer";
 import {Series} from "./series";
 
+export interface Sponsor {
+    id: string;
+    name: string;
+    logo?: AssetImage;
+    link?: string;
+}
+
 export interface Episode {
     id?: string,
     seriesId: string,
@@ -20,7 +27,7 @@ export interface Episode {
     duration: number,
     sponsorLabel?: string,
     sponsorId?: string,
-    sponsor?: any,
+    sponsor?: Sponsor, // Populated when sponsorId exists
     producerId: string,
     producer: Partial<Producer>,
     tags?: string[],

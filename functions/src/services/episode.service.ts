@@ -270,6 +270,27 @@ export const getEpisodeById = async (id: string) => {
   
   const episodeData: any = { id: doc.id, ...doc.data() };
   
+  // Populate sponsor data if sponsorId exists
+  if (episodeData.sponsorId && episodeData.seriesId) {
+    try {
+      const sponsorDoc = await db.collection(`series/${episodeData.seriesId}/sponsors`).doc(episodeData.sponsorId).get();
+      if (sponsorDoc.exists) {
+        episodeData.sponsor = { id: sponsorDoc.id, ...sponsorDoc.data() };
+      } else {
+        // If sponsor ID doesn't exist, remove the reference
+        delete episodeData.sponsorId;
+        delete episodeData.sponsor;
+      }
+    } catch (error) {
+      console.error(`Error fetching sponsor ${episodeData.sponsorId}:`, error);
+      delete episodeData.sponsorId;
+      delete episodeData.sponsor;
+    }
+  } else {
+    // If no sponsorId, ensure sponsor is not included
+    delete episodeData.sponsor;
+  }
+  
   // Get subcontent sliders with their videos for this episode
   const subcontent = await getSubcontentSliders(id, episodeData.seriesId);
   episodeData.subcontent = subcontent;
