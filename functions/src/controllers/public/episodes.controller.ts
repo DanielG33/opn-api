@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { getEpisodeListByIds, getEpisodeById } from '../../services/episode.service';
+import { getEpisodeListByIds, getEpisodeById, getEpisodesBySeriesId, getEpisodesBySeasonId } from '../../services/episode.service';
 
 export const getEpisodesById = async (req: Request, res: Response) => {
     const ids = String(req.query.ids || req.query.ids).split(',');
@@ -25,5 +25,31 @@ export const getEpisode = async (req: Request, res: Response) => {
     } catch (error) {
         console.error(error);
         return res.status(500).json({ success: false, message: 'Failed to fetch episode' });
+    }
+}
+
+export const getEpisodesBySeries = async (req: Request, res: Response) => {
+    const { seriesId } = req.params;
+    const excludeEpisodeId = req.query.exclude as string;
+
+    try {
+        const episodes = await getEpisodesBySeriesId(seriesId, excludeEpisodeId);
+        res.status(200).json({ success: true, data: episodes });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Failed to fetch episodes by series' });
+    }
+}
+
+export const getEpisodesBySeason = async (req: Request, res: Response) => {
+    const { seriesId, seasonId } = req.params;
+    const excludeEpisodeId = req.query.exclude as string;
+
+    try {
+        const episodes = await getEpisodesBySeasonId(seriesId, seasonId, excludeEpisodeId);
+        res.status(200).json({ success: true, data: episodes });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Failed to fetch episodes by season' });
     }
 }

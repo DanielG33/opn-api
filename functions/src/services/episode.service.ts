@@ -270,6 +270,19 @@ export const getEpisodeById = async (id: string) => {
   
   const episodeData: any = { id: doc.id, ...doc.data() };
   
+  // Ensure series name is populated if missing
+  if (episodeData.seriesId && !episodeData.seriesName) {
+    try {
+      const seriesDoc = await db.collection('series').doc(episodeData.seriesId).get();
+      if (seriesDoc.exists) {
+        const seriesData = seriesDoc.data();
+        episodeData.seriesName = seriesData?.title || 'Unknown Series';
+      }
+    } catch (error) {
+      console.error('Error fetching series data for episode:', error);
+    }
+  }
+  
   // Populate sponsor data if sponsorId exists
   if (episodeData.sponsorId && episodeData.seriesId) {
     try {
@@ -308,6 +321,71 @@ export const getEpisodeListByIds = async (ids: string[]) => {
   );
 
   return results.filter((episode) => Boolean(episode));
+};
+
+export const getEpisodesBySeriesId = async (seriesId: string, excludeEpisodeId?: string) => {
+  let query: FirebaseFirestore.Query = db.collection("episodes")
+    .where("seriesId", "==", seriesId)
+    .orderBy("createdAt", "desc");
+
+  const snapshot = await query.get();
+  let episodes: any[] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+  // Exclude the specified episode if provided
+  if (excludeEpisodeId) {
+    episodes = episodes.filter(episode => episode.id !== excludeEpisodeId);
+  }
+
+  // Ensure series name is populated if missing
+  if (episodes.length > 0 && !episodes[0].seriesName) {
+    try {
+      const seriesDoc = await db.collection('series').doc(seriesId).get();
+      if (seriesDoc.exists) {
+        const seriesData = seriesDoc.data();
+        episodes = episodes.map(episode => ({
+          ...episode,
+          seriesName: episode.seriesName || seriesData?.title || 'Unknown Series'
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching series data for episodes:', error);
+    }
+  }
+
+  return episodes;
+};
+
+export const getEpisodesBySeasonId = async (seriesId: string, seasonId: string, excludeEpisodeId?: string) => {
+  let query: FirebaseFirestore.Query = db.collection("episodes")
+    .where("seriesId", "==", seriesId)
+    .where("seasonId", "==", seasonId)
+    .orderBy("episodeNumber", "asc");
+
+  const snapshot = await query.get();
+  let episodes: any[] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+  // Exclude the specified episode if provided
+  if (excludeEpisodeId) {
+    episodes = episodes.filter(episode => episode.id !== excludeEpisodeId);
+  }
+
+  // Ensure series name is populated if missing
+  if (episodes.length > 0 && !episodes[0].seriesName) {
+    try {
+      const seriesDoc = await db.collection('series').doc(seriesId).get();
+      if (seriesDoc.exists) {
+        const seriesData = seriesDoc.data();
+        episodes = episodes.map(episode => ({
+          ...episode,
+          seriesName: episode.seriesName || seriesData?.title || 'Unknown Series'
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching series data for episodes:', error);
+    }
+  }
+
+  return episodes;
 };
 
 // TODO: implement season data  
