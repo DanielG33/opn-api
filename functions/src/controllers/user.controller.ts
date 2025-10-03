@@ -4,11 +4,15 @@ import { db } from "../firebase";
 // Types
 interface UserPlaylist {
   id?: string;
-  name: string;
+  title: string; // Changed from 'name' to match frontend interface
   description?: string;
   episodes: string[]; // Array of episode IDs
   createdAt: Date;
   updatedAt: Date;
+  userId: string;
+  videoCount: number;
+  thumbnailUrl?: string;
+  isPublic: boolean;
 }
 
 interface FollowedSeries {
@@ -34,10 +38,14 @@ export const getUserPlaylists = async (req: Request, res: Response) => {
       .collection("playlists")
       .get();
 
-    const playlists = playlistsSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+    const playlists = playlistsSnapshot.docs.map(doc => {
+      const data = doc.data() as UserPlaylist;
+      return {
+        id: doc.id,
+        ...data,
+        videoCount: data.episodes.length
+      };
+    });
 
     res.json(playlists);
   } catch (error) {
@@ -49,18 +57,21 @@ export const getUserPlaylists = async (req: Request, res: Response) => {
 export const createPlaylist = async (req: Request, res: Response) => {
   try {
     const userId = req.user!.uid;
-    const { name, description } = req.body;
+    const { title, description, isPublic } = req.body;
 
-    if (!name) {
-      return res.status(400).json({ error: "Playlist name is required" });
+    if (!title) {
+      return res.status(400).json({ error: "Playlist title is required" });
     }
 
     const playlist: UserPlaylist = {
-      name,
+      title,
       description: description || "",
       episodes: [],
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
+      userId,
+      videoCount: 0,
+      isPublic: isPublic || false
     };
 
     const docRef = await db
@@ -94,7 +105,7 @@ export const deletePlaylist = async (req: Request, res: Response) => {
     return res.status(204).send();
   } catch (error) {
     console.error("Error deleting playlist:", error);
-    res.status(500).json({ error: "Failed to delete playlist" });
+    return res.status(500).json({ error: "Failed to delete playlist" });
   }
 };
 
@@ -358,5 +369,163 @@ export const checkProducerFollowStatus = async (req: Request, res: Response) => 
   } catch (error) {
     console.error("Error checking producer follow status:", error);
     res.status(500).json({ error: "Failed to check follow status" });
+  }
+};
+
+// Enhanced Playlist Controllers
+export const getPlaylistsWithVideoStatus = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.uid;
+    const { videoId } = req.params;
+
+    const playlistsSnapshot = await db
+      .collection("users")
+      .doc(userId)
+      .collection("playlists")
+      .get();
+
+    const playlistsWithStatus = playlistsSnapshot.docs.map(doc => {
+      const playlist = { id: doc.id, ...doc.data() } as UserPlaylist;
+      const hasVideo = playlist.episodes.includes(videoId);
+      
+      return {
+        id: playlist.id!,
+        title: playlist.title,
+        description: playlist.description,
+        createdAt: playlist.createdAt,
+        updatedAt: playlist.updatedAt,
+        userId: playlist.userId,
+        videoCount: playlist.episodes.length,
+        thumbnailUrl: playlist.thumbnailUrl,
+        isPublic: playlist.isPublic,
+        hasVideo
+      };
+    });
+
+    res.json(playlistsWithStatus);
+  } catch (error) {
+    console.error("Error fetching playlists with video status:", error);
+    res.status(500).json({ error: "Failed to fetch playlists" });
+  }
+};
+
+export const addVideoToPlaylist = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.uid;
+    const { playlistId } = req.params;
+    const { videoId } = req.body;
+
+    if (!videoId) {
+      return res.status(400).json({ error: "Video ID is required" });
+    }
+
+    const playlistRef = db
+      .collection("users")
+      .doc(userId)
+      .collection("playlists")
+      .doc(playlistId);
+
+    const playlistDoc = await playlistRef.get();
+    
+    if (!playlistDoc.exists) {
+      return res.status(404).json({ error: "Playlist not found" });
+    }
+
+    const playlist = playlistDoc.data() as UserPlaylist;
+    
+    // Check if video is already in playlist
+    if (playlist.episodes.includes(videoId)) {
+      return res.status(409).json({ error: "Video already in playlist" });
+    }
+
+    // Add video to playlist
+    const updatedEpisodes = [...playlist.episodes, videoId];
+    
+    await playlistRef.update({
+      episodes: updatedEpisodes,
+      updatedAt: new Date()
+    });
+
+    // Return the playlist video entry
+    const playlistVideo = {
+      id: `${playlistId}_${videoId}`,
+      playlistId,
+      videoId,
+      addedAt: new Date(),
+      order: updatedEpisodes.length - 1
+    };
+
+    return res.status(201).json(playlistVideo);
+  } catch (error) {
+    console.error("Error adding video to playlist:", error);
+    return res.status(500).json({ error: "Failed to add video to playlist" });
+  }
+};
+
+export const removeVideoFromPlaylist = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.uid;
+    const { playlistId, videoId } = req.params;
+
+    const playlistRef = db
+      .collection("users")
+      .doc(userId)
+      .collection("playlists")
+      .doc(playlistId);
+
+    const playlistDoc = await playlistRef.get();
+    
+    if (!playlistDoc.exists) {
+      return res.status(404).json({ error: "Playlist not found" });
+    }
+
+    const playlist = playlistDoc.data() as UserPlaylist;
+    
+    // Check if video is in playlist
+    if (!playlist.episodes.includes(videoId)) {
+      return res.status(404).json({ error: "Video not in playlist" });
+    }
+
+    // Remove video from playlist
+    const updatedEpisodes = playlist.episodes.filter(episodeId => episodeId !== videoId);
+    
+    await playlistRef.update({
+      episodes: updatedEpisodes,
+      updatedAt: new Date()
+    });
+
+    return res.status(204).send();
+  } catch (error) {
+    console.error("Error removing video from playlist:", error);
+    return res.status(500).json({ error: "Failed to remove video from playlist" });
+  }
+};
+
+export const getPlaylistById = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.uid;
+    const { playlistId } = req.params;
+
+    const playlistDoc = await db
+      .collection("users")
+      .doc(userId)
+      .collection("playlists")
+      .doc(playlistId)
+      .get();
+
+    if (!playlistDoc.exists) {
+      return res.status(404).json({ error: "Playlist not found" });
+    }
+
+    const playlist = {
+      id: playlistDoc.id,
+      ...playlistDoc.data(),
+      videoCount: (playlistDoc.data() as UserPlaylist).episodes.length
+    };
+
+    return res.json(playlist);
+  } catch (error) {
+    console.error("Error fetching playlist:", error);
+    return res.status(500).json({ error: "Failed to fetch playlist" });
   }
 };

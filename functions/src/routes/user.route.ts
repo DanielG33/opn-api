@@ -4,6 +4,10 @@ import {
   getUserPlaylists,
   createPlaylist,
   deletePlaylist,
+  getPlaylistsWithVideoStatus,
+  addVideoToPlaylist,
+  removeVideoFromPlaylist,
+  getPlaylistById,
   getFollowedSeries,
   followSeries,
   unfollowSeries,
@@ -22,7 +26,11 @@ userRouter.use(authMiddleware);
 // Playlist routes
 userRouter.get("/playlists", getUserPlaylists);
 userRouter.post("/playlists", createPlaylist);
+userRouter.get("/playlists/status/:videoId", getPlaylistsWithVideoStatus);
+userRouter.get("/playlists/:playlistId", getPlaylistById);
 userRouter.delete("/playlists/:playlistId", deletePlaylist);
+userRouter.post("/playlists/:playlistId/videos", addVideoToPlaylist);
+userRouter.delete("/playlists/:playlistId/videos/:videoId", removeVideoFromPlaylist);
 
 // Series following routes
 userRouter.get("/followed-series", getFollowedSeries);
