@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { db } from "../firebase";
+import { db, bucket } from "../firebase";
 import { UserPlaylist } from "../models/playlist";
 import { Episode } from "../models/episode";
 
@@ -105,6 +105,123 @@ export const getUserPlaylists = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Error creating playlist:", error);
     return res.status(500).json({ error: "Failed to create playlist" });
+  }
+};
+
+export const updatePlaylist = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.uid;
+    const { playlistId } = req.params;
+    const updates = req.body;
+
+    console.log(`Updating playlist ${playlistId} for user ${userId}:`, updates);
+
+    const playlistRef = db
+      .collection("users")
+      .doc(userId)
+      .collection("playlists")
+      .doc(playlistId);
+
+    const playlistDoc = await playlistRef.get();
+    
+    if (!playlistDoc.exists) {
+      return res.status(404).json({ error: "Playlist not found" });
+    }
+
+    // Update with timestamp
+    const updateData = {
+      ...updates,
+      updatedAt: new Date()
+    };
+
+    await playlistRef.update(updateData);
+
+    // Get updated playlist
+    const updatedDoc = await playlistRef.get();
+    const updatedPlaylist = {
+      id: updatedDoc.id,
+      ...updatedDoc.data()
+    };
+
+    console.log('Playlist updated successfully:', updatedPlaylist);
+    return res.json(updatedPlaylist);
+  } catch (error) {
+    console.error("Error updating playlist:", error);
+    return res.status(500).json({ error: "Failed to update playlist" });
+  }
+};
+
+export const uploadPlaylistThumbnail = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.uid;
+    const { playlistId } = req.params;
+    const { base64EncodedFile, fileName } = req.body;
+
+    console.log(`Uploading thumbnail for playlist ${playlistId} by user ${userId}`);
+
+    if (!base64EncodedFile) {
+      return res.status(400).json({ error: "No file data provided" });
+    }
+
+    if (!fileName) {
+      return res.status(400).json({ error: "File name is required" });
+    }
+
+    // Check if playlist exists
+    const playlistRef = db
+      .collection("users")
+      .doc(userId)
+      .collection("playlists")
+      .doc(playlistId);
+
+    const playlistDoc = await playlistRef.get();
+    if (!playlistDoc.exists) {
+      return res.status(404).json({ error: "Playlist not found" });
+    }
+
+    // Use the same asset service approach as admin
+    const { getBase64Data, getBase64MimeType } = require('../utils/base64');
+    
+    // Get file data and mime type
+    const fileData = getBase64Data(base64EncodedFile);
+    const mimeType = getBase64MimeType(base64EncodedFile);
+
+    if (!mimeType || !mimeType.startsWith('image/')) {
+      return res.status(400).json({ 
+        error: "Invalid file type. Please upload an image file." 
+      });
+    }
+
+    // Build file path for user playlists
+    const filePath = `users/${userId}/playlists/${playlistId}/${fileName}`;
+    
+    const fileRef = bucket.file(filePath);
+    const fileBuffer = Buffer.from(fileData, "base64");
+
+    // Upload to Firebase Storage
+    await fileRef.save(fileBuffer, { contentType: mimeType });
+    await fileRef.makePublic();
+    const thumbnailUrl = fileRef.publicUrl();
+
+    // Update playlist with new thumbnail URL
+    await playlistRef.update({
+      thumbnailUrl,
+      updatedAt: new Date()
+    });
+
+    // Get updated playlist
+    const updatedDoc = await playlistRef.get();
+    const updatedPlaylist = {
+      id: updatedDoc.id,
+      ...updatedDoc.data()
+    };
+
+    console.log('Thumbnail uploaded successfully:', thumbnailUrl);
+    return res.json(updatedPlaylist);
+
+  } catch (error) {
+    console.error("Error uploading playlist thumbnail:", error);
+    return res.status(500).json({ error: "Failed to upload thumbnail" });
   }
 };
 

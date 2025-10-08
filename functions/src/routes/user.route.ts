@@ -3,6 +3,7 @@ import { authMiddleware } from "../middlewares/auth.middleware";
 import { 
   getUserPlaylists,
   createPlaylist,
+  updatePlaylist,
   deletePlaylist,
   getPlaylistsWithVideoStatus,
   addVideoToPlaylist,
@@ -17,7 +18,8 @@ import {
   getFollowedProducers,
   followProducer,
   unfollowProducer,
-  checkProducerFollowStatus
+  checkProducerFollowStatus,
+  uploadPlaylistThumbnail
 } from "../controllers/user.controller";
 
 export const userRouter = Router();
@@ -34,6 +36,8 @@ userRouter.post("/playlists", createPlaylist);
 userRouter.get("/playlists/status/:videoId", getPlaylistsWithVideoStatus);
 userRouter.get("/playlists/:playlistId", getPlaylistById);
 userRouter.get("/playlists/:playlistId/videos", getPlaylistVideos);
+userRouter.patch("/playlists/:playlistId", updatePlaylist);
+userRouter.patch("/playlists/:playlistId/thumbnail", uploadPlaylistThumbnail);
 userRouter.delete("/playlists/:playlistId", deletePlaylist);
 userRouter.post("/playlists/:playlistId/videos", addVideoToPlaylist);
 userRouter.delete("/playlists/:playlistId/videos/:videoId", removeVideoFromPlaylist);
