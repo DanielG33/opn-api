@@ -8,6 +8,8 @@ import {
   addVideoToPlaylist,
   removeVideoFromPlaylist,
   getPlaylistById,
+  getPlaylistVideos,
+  healthCheck,
   getFollowedSeries,
   followSeries,
   unfollowSeries,
@@ -23,11 +25,15 @@ export const userRouter = Router();
 // Apply auth middleware to all user routes
 userRouter.use(authMiddleware);
 
+// Health check
+userRouter.get("/health", healthCheck);
+
 // Playlist routes
 userRouter.get("/playlists", getUserPlaylists);
 userRouter.post("/playlists", createPlaylist);
 userRouter.get("/playlists/status/:videoId", getPlaylistsWithVideoStatus);
 userRouter.get("/playlists/:playlistId", getPlaylistById);
+userRouter.get("/playlists/:playlistId/videos", getPlaylistVideos);
 userRouter.delete("/playlists/:playlistId", deletePlaylist);
 userRouter.post("/playlists/:playlistId/videos", addVideoToPlaylist);
 userRouter.delete("/playlists/:playlistId/videos/:videoId", removeVideoFromPlaylist);

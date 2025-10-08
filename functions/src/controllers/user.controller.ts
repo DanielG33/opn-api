@@ -1,20 +1,9 @@
 import { Request, Response } from "express";
 import { db } from "../firebase";
+import { UserPlaylist } from "../models/playlist";
+import { Episode } from "../models/episode";
 
 // Types
-interface UserPlaylist {
-  id?: string;
-  title: string; // Changed from 'name' to match frontend interface
-  description?: string;
-  episodes: string[]; // Array of episode IDs
-  createdAt: Date;
-  updatedAt: Date;
-  userId: string;
-  videoCount: number;
-  thumbnailUrl?: string;
-  isPublic: boolean;
-}
-
 interface FollowedSeries {
   id?: string;
   seriesId: string;
@@ -28,10 +17,38 @@ interface FollowedProducer {
 }
 
 // Playlist Controllers
+export const healthCheck = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.uid;
+    console.log(`Health check for user: ${userId}`);
+    
+    // Test database connection
+    const testSnapshot = await db.collection("episodes").limit(1).get();
+    const episodeCount = testSnapshot.size;
+    
+    return res.json({
+      status: "healthy",
+      userId: userId,
+      timestamp: new Date().toISOString(),
+      episodesCollection: {
+        accessible: true,
+        sampleCount: episodeCount
+      }
+    });
+  } catch (error) {
+    console.error("Health check failed:", error);
+    return res.status(500).json({ 
+      status: "unhealthy", 
+      error: error instanceof Error ? error.message : "Unknown error" 
+    });
+  }
+};
+
 export const getUserPlaylists = async (req: Request, res: Response) => {
   try {
     const userId = req.user!.uid;
-    
+    console.log(`Fetching playlists for user: ${userId}`);
+
     const playlistsSnapshot = await db
       .collection("users")
       .doc(userId)
@@ -40,21 +57,22 @@ export const getUserPlaylists = async (req: Request, res: Response) => {
 
     const playlists = playlistsSnapshot.docs.map(doc => {
       const data = doc.data() as UserPlaylist;
-      return {
+      const playlist = {
         id: doc.id,
         ...data,
-        videoCount: data.episodes.length
+        videoCount: data.episodes?.length || 0 // Ensure videoCount matches episodes length
       };
+      console.log(`Playlist ${doc.id}:`, playlist);
+      return playlist;
     });
 
+    console.log(`Returning ${playlists.length} playlists for user ${userId}`);
     res.json(playlists);
   } catch (error) {
     console.error("Error fetching user playlists:", error);
     res.status(500).json({ error: "Failed to fetch playlists" });
   }
-};
-
-export const createPlaylist = async (req: Request, res: Response) => {
+};export const createPlaylist = async (req: Request, res: Response) => {
   try {
     const userId = req.user!.uid;
     const { title, description, isPublic } = req.body;
@@ -415,8 +433,17 @@ export const addVideoToPlaylist = async (req: Request, res: Response) => {
     const { playlistId } = req.params;
     const { videoId } = req.body;
 
+    console.log(`Adding video ${videoId} to playlist ${playlistId} for user ${userId}`);
+
     if (!videoId) {
       return res.status(400).json({ error: "Video ID is required" });
+    }
+
+    // First, verify the episode exists
+    const episodeDoc = await db.collection("episodes").doc(videoId).get();
+    if (!episodeDoc.exists) {
+      console.log(`Episode ${videoId} not found in episodes collection`);
+      return res.status(404).json({ error: "Episode not found" });
     }
 
     const playlistRef = db
@@ -441,10 +468,14 @@ export const addVideoToPlaylist = async (req: Request, res: Response) => {
     // Add video to playlist
     const updatedEpisodes = [...playlist.episodes, videoId];
     
+    console.log(`Updating playlist with episodes:`, updatedEpisodes);
+    
     await playlistRef.update({
       episodes: updatedEpisodes,
       updatedAt: new Date()
     });
+
+    console.log(`Successfully added video ${videoId} to playlist ${playlistId}`);
 
     // Return the playlist video entry
     const playlistVideo = {
@@ -527,5 +558,70 @@ export const getPlaylistById = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Error fetching playlist:", error);
     return res.status(500).json({ error: "Failed to fetch playlist" });
+  }
+};
+
+export const getPlaylistVideos = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.uid;
+    const { playlistId } = req.params;
+
+    // First get the playlist to get the episode IDs
+    const playlistDoc = await db
+      .collection("users")
+      .doc(userId)
+      .collection("playlists")
+      .doc(playlistId)
+      .get();
+
+    if (!playlistDoc.exists) {
+      return res.status(404).json({ error: "Playlist not found" });
+    }
+
+    const playlistData = playlistDoc.data() as UserPlaylist;
+    
+    if (!playlistData.episodes || playlistData.episodes.length === 0) {
+      return res.json([]);
+    }
+
+    // Fetch episode details for each episode ID
+    const videoPromises = playlistData.episodes.map(async (episodeId: string) => {
+      try {
+        console.log(`Fetching episode ${episodeId} from episodes collection`);
+        const episodeDoc = await db.collection("episodes").doc(episodeId).get();
+        if (episodeDoc.exists) {
+          const episodeData = episodeDoc.data() as Episode;
+          console.log(`Found episode data for ${episodeId}:`, episodeData);
+          
+          // Map Episode to ContentCard interface
+          return {
+            id: episodeDoc.id,
+            title: episodeData.title || 'Untitled Episode',
+            subtitle: episodeData.description || 'No description available',
+            imageUrl: episodeData.thumbnail?.url || '',
+            thumbnail: episodeData.thumbnail || null,
+            metaData: episodeData.tags || [],
+            videoUrl: episodeData.videoUrl || '',
+            type: 'episode' as const,
+            episodeId: episodeDoc.id
+          };
+        } else {
+          console.log(`Episode ${episodeId} not found in episodes collection`);
+        }
+        return null;
+      } catch (error) {
+        console.error(`Error fetching episode ${episodeId}:`, error);
+        return null;
+      }
+    });
+
+    const videos = await Promise.all(videoPromises);
+    // Filter out null values (failed fetches)
+    const validVideos = videos.filter(video => video !== null);
+
+    return res.json(validVideos);
+  } catch (error) {
+    console.error("Error fetching playlist videos:", error);
+    return res.status(500).json({ error: "Failed to fetch playlist videos" });
   }
 };
