@@ -55,7 +55,6 @@ export const updateProfileMe = async (req: Request, res: Response) => {
 
 export const getProfileProducer = async (req: Request, res: Response) => {
   const uid = req.user?.uid as string;
-  console.log({uid});
   const userDoc = await db.collection("users").doc(uid).get();
   if (!userDoc.exists) return res.status(404).json({message: "User not found"});
   const producerId = String(userDoc.data()?.producerId);

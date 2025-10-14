@@ -6,13 +6,10 @@ export const onVideoRatingWrite = onDocumentWritten(
   'video_ratings/{ratingId}',
   async (event) => {
     const firestore = getFirestore();
-    const ratingId = event.params.ratingId;
     
     // Get the rating data before and after the change
     const beforeData = event.data?.before?.data() as VideoRating | undefined;
     const afterData = event.data?.after?.data() as VideoRating | undefined;
-    
-    console.log('Rating trigger fired:', { ratingId, beforeData, afterData });
     
     // Determine the video ID from the rating data
     const videoId = afterData?.videoId || beforeData?.videoId;
@@ -24,7 +21,6 @@ export const onVideoRatingWrite = onDocumentWritten(
     try {
       // Recalculate stats for the video
       await recalculateVideoStats(firestore, videoId);
-      console.log('Successfully updated video stats for:', videoId);
     } catch (error) {
       console.error('Error updating video stats:', error);
     }
@@ -69,6 +65,4 @@ async function recalculateVideoStats(firestore: FirebaseFirestore.Firestore, vid
     .collection('video_stats')
     .doc(videoId)
     .set(stats);
-  
-  console.log('Updated stats for video:', videoId, stats);
 }

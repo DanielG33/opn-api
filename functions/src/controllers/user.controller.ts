@@ -20,7 +20,6 @@ interface FollowedProducer {
 export const healthCheck = async (req: Request, res: Response) => {
   try {
     const userId = req.user!.uid;
-    console.log(`Health check for user: ${userId}`);
     
     // Test database connection
     const testSnapshot = await db.collection("episodes").limit(1).get();
@@ -47,7 +46,6 @@ export const healthCheck = async (req: Request, res: Response) => {
 export const getUserPlaylists = async (req: Request, res: Response) => {
   try {
     const userId = req.user!.uid;
-    console.log(`Fetching playlists for user: ${userId}`);
 
     const playlistsSnapshot = await db
       .collection("users")
@@ -62,11 +60,9 @@ export const getUserPlaylists = async (req: Request, res: Response) => {
         ...data,
         videoCount: data.episodes?.length || 0 // Ensure videoCount matches episodes length
       };
-      console.log(`Playlist ${doc.id}:`, playlist);
       return playlist;
     });
 
-    console.log(`Returning ${playlists.length} playlists for user ${userId}`);
     res.json(playlists);
   } catch (error) {
     console.error("Error fetching user playlists:", error);
@@ -114,8 +110,6 @@ export const updatePlaylist = async (req: Request, res: Response) => {
     const { playlistId } = req.params;
     const updates = req.body;
 
-    console.log(`Updating playlist ${playlistId} for user ${userId}:`, updates);
-
     const playlistRef = db
       .collection("users")
       .doc(userId)
@@ -143,7 +137,6 @@ export const updatePlaylist = async (req: Request, res: Response) => {
       ...updatedDoc.data()
     };
 
-    console.log('Playlist updated successfully:', updatedPlaylist);
     return res.json(updatedPlaylist);
   } catch (error) {
     console.error("Error updating playlist:", error);
@@ -156,8 +149,6 @@ export const uploadPlaylistThumbnail = async (req: Request, res: Response) => {
     const userId = req.user!.uid;
     const { playlistId } = req.params;
     const { base64EncodedFile, fileName } = req.body;
-
-    console.log(`Uploading thumbnail for playlist ${playlistId} by user ${userId}`);
 
     if (!base64EncodedFile) {
       return res.status(400).json({ error: "No file data provided" });
@@ -216,7 +207,6 @@ export const uploadPlaylistThumbnail = async (req: Request, res: Response) => {
       ...updatedDoc.data()
     };
 
-    console.log('Thumbnail uploaded successfully:', thumbnailUrl);
     return res.json(updatedPlaylist);
 
   } catch (error) {
@@ -550,8 +540,6 @@ export const addVideoToPlaylist = async (req: Request, res: Response) => {
     const { playlistId } = req.params;
     const { videoId } = req.body;
 
-    console.log(`Adding video ${videoId} to playlist ${playlistId} for user ${userId}`);
-
     if (!videoId) {
       return res.status(400).json({ error: "Video ID is required" });
     }
@@ -559,7 +547,6 @@ export const addVideoToPlaylist = async (req: Request, res: Response) => {
     // First, verify the episode exists
     const episodeDoc = await db.collection("episodes").doc(videoId).get();
     if (!episodeDoc.exists) {
-      console.log(`Episode ${videoId} not found in episodes collection`);
       return res.status(404).json({ error: "Episode not found" });
     }
 
@@ -585,14 +572,10 @@ export const addVideoToPlaylist = async (req: Request, res: Response) => {
     // Add video to playlist
     const updatedEpisodes = [...playlist.episodes, videoId];
     
-    console.log(`Updating playlist with episodes:`, updatedEpisodes);
-    
     await playlistRef.update({
       episodes: updatedEpisodes,
       updatedAt: new Date()
     });
-
-    console.log(`Successfully added video ${videoId} to playlist ${playlistId}`);
 
     // Return the playlist video entry
     const playlistVideo = {
@@ -704,11 +687,9 @@ export const getPlaylistVideos = async (req: Request, res: Response) => {
     // Fetch episode details for each episode ID
     const videoPromises = playlistData.episodes.map(async (episodeId: string) => {
       try {
-        console.log(`Fetching episode ${episodeId} from episodes collection`);
         const episodeDoc = await db.collection("episodes").doc(episodeId).get();
         if (episodeDoc.exists) {
           const episodeData = episodeDoc.data() as Episode;
-          console.log(`Found episode data for ${episodeId}:`, episodeData);
           
           // Map Episode to ContentCard interface
           return {
@@ -723,7 +704,7 @@ export const getPlaylistVideos = async (req: Request, res: Response) => {
             episodeId: episodeDoc.id
           };
         } else {
-          console.log(`Episode ${episodeId} not found in episodes collection`);
+          // Episode not found, return null
         }
         return null;
       } catch (error) {

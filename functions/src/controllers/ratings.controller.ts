@@ -139,7 +139,6 @@ export const getVideoStats = async (req: Request, res: Response): Promise<void> 
       stats = statsDoc.data() as VideoStats;
     } else {
       // If no stats document exists, calculate them on the fly
-      console.log('No stats document found, calculating stats for video:', videoId);
       await recalculateVideoStatsHelper(videoId);
       
       // Try to get the stats again after calculation
@@ -180,8 +179,6 @@ async function recalculateVideoStatsHelper(videoId: string): Promise<VideoStats>
   const ratingsSnapshot = await ratingsQuery.get();
   const ratings = ratingsSnapshot.docs.map(doc => doc.data() as VideoRating);
   
-  console.log(`Found ${ratings.length} ratings for video ${videoId}`);
-  
   // Calculate aggregated stats
   const totalRatings = ratings.length;
   let averageRating = 0;
@@ -209,7 +206,6 @@ async function recalculateVideoStatsHelper(videoId: string): Promise<VideoStats>
   // Save stats to video_stats collection
   await db.collection('video_stats').doc(videoId).set(stats);
   
-  console.log('Updated stats for video:', videoId, stats);
   return stats;
 }
 
@@ -218,7 +214,6 @@ export const recalculateVideoStats = async (req: Request, res: Response): Promis
   try {
     const { videoId } = req.params;
     
-    console.log('Manual stats recalculation requested for video:', videoId);
     const stats = await recalculateVideoStatsHelper(videoId);
     
     const response: StatsResponse = {

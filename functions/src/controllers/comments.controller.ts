@@ -13,8 +13,6 @@ export const getVideoComments = async (req: Request, res: Response): Promise<voi
     const limitNum = Math.min(parseInt(limit as string) || 50, 100); // Max 100 comments per request
     const offsetNum = parseInt(offset as string) || 0;
 
-    console.log(`Fetching comments for video ${videoId}, limit: ${limitNum}, offset: ${offsetNum}`);
-
     // For simplicity, let's get all comments and handle pagination in memory for now
     // This works better with Firebase emulator
     const commentsQuery = db
@@ -43,7 +41,6 @@ export const getVideoComments = async (req: Request, res: Response): Promise<voi
       total
     };
 
-    console.log(`Found ${comments.length} comments out of ${total} total for video ${videoId}`);
     res.json(response);
   } catch (error) {
     console.error('Error getting video comments:', error);
@@ -101,7 +98,6 @@ export const createComment = async (req: Request, res: Response): Promise<void> 
       comment: commentData
     };
 
-    console.log(`Created comment ${commentId} for video ${videoId} by user ${userId}`);
     res.json(response);
   } catch (error) {
     console.error('Error creating comment:', error);
@@ -143,7 +139,6 @@ export const deleteComment = async (req: Request, res: Response): Promise<void> 
     // Delete the comment
     await db.collection('video_comments').doc(commentId).delete();
 
-    console.log(`Deleted comment ${commentId} for video ${videoId} by user ${userId}`);
     res.json({ message: 'Comment deleted successfully' });
   } catch (error) {
     console.error('Error deleting comment:', error);
