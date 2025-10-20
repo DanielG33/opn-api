@@ -4,11 +4,7 @@ export interface Sponsor {
     id?: string;
     name: string;
     link?: string;
-    logo?: {
-        id: string,
-        name: string,
-        url: string,
-    }
+    logoUrl: string;
     bgColor?: string;
     bgOpacity?: string;
     createdAt: number;

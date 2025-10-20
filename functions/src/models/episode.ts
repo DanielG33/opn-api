@@ -1,11 +1,11 @@
-import {AssetImage} from "./asset";
+import {AssetRef} from "./asset";
 import {Producer} from "./producer";
 import {Series} from "./series";
 
 export interface Sponsor {
     id: string;
     name: string;
-    logo?: AssetImage;
+    logoUrl: string;
     link?: string;
 }
 
@@ -21,7 +21,7 @@ export interface Episode {
     episodeNumber: number,
     category?: string,
     subcategories?: string[],
-    thumbnail: AssetImage,
+    thumbnail: AssetRef,
     platform: "vimeo",
     videoUrl: string,
     duration: number,

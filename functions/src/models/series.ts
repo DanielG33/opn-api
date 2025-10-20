@@ -1,4 +1,4 @@
-import {AssetImage} from "./asset";
+import {AssetRef} from "./asset";
 import {Producer} from "./producer";
 
 export interface Series {
@@ -6,13 +6,14 @@ export interface Series {
     title: string;
     description: string;
     categories: string[];
-    tags?: string[];
-    logo?: Partial<AssetImage>,
-    cover: Partial<AssetImage>,
-    portraitCover?: Partial<AssetImage>,
     producerId: string;
-    producer: Partial<Producer>;
+    producerName: string;
     type: 'season-based' | 'limited';
+    tags?: string[];
+    logo?: Partial<AssetRef>,
+    cover: Partial<AssetRef>,
+    portraitCover?: Partial<AssetRef>,
+    producer: Partial<Producer>;
     sectionsOrder: string[];
     createdAt: string;
     updatedAt: string;
