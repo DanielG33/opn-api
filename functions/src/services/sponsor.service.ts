@@ -15,7 +15,7 @@ export const createSponsor = async (seriesId: string, data: Partial<Sponsor>): P
   const timestamp = Date.now();
   const sponsor: Sponsor = {
     name: data.name || "",
-    logo: data.logo,
+    logoUrl: data.logoUrl || "",
     link: data.link || "",
     createdAt: timestamp,
     updatedAt: timestamp,

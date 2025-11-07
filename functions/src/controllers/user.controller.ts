@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { db, bucket } from "../firebase";
 import { UserPlaylist } from "../models/playlist";
 import { Episode } from "../models/episode";
+import { getUserProfile, updateUserProfile } from "../services/acount.service";
 
 // Types
 interface FollowedSeries {
@@ -721,5 +722,91 @@ export const getPlaylistVideos = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Error fetching playlist videos:", error);
     return res.status(500).json({ error: "Failed to fetch playlist videos" });
+  }
+};
+
+// Profile Controllers
+export const getProfile = async (req: Request, res: Response) => {
+  const uid = req.user?.uid as string;
+  const email = req.user?.email as string;
+  
+  console.log('getProfile called with uid:', uid, 'email:', email);
+  
+  try {
+    let profile = await getUserProfile(uid);
+    console.log('Retrieved profile from database:', profile);
+    
+    if (!profile) {
+      console.log('No profile found, creating new user profile...');
+      
+      // Create a basic user profile from the JWT token data
+      const newUserData = {
+        id: uid,
+        name: 'User', // Default name that can be updated later
+        email: email,
+        role: 'user',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      
+      try {
+        await db.collection('users').doc(uid).set(newUserData);
+        console.log('Created new user profile:', newUserData);
+        
+        return res.json({
+          success: true,
+          data: newUserData
+        });
+      } catch (createError) {
+        console.error('Error creating user profile:', createError);
+        
+        // Fallback: return user data from JWT even if we can't save it
+        return res.json({
+          success: true,
+          data: newUserData
+        });
+      }
+    }
+    
+    return res.json({
+      success: true,
+      data: profile
+    });
+  } catch (error) {
+    console.error('Error fetching profile:', error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch profile"
+    });
+  }
+};
+
+export const updateProfile = async (req: Request, res: Response) => {
+  const uid = req.user?.uid as string;
+  const { name } = req.body;
+  
+  if (!name || name.trim().length < 2) {
+    return res.status(400).json({
+      success: false,
+      message: "Name is required and must be at least 2 characters long"
+    });
+  }
+  
+  try {
+    await updateUserProfile(uid, {
+      name: name.trim(),
+      updatedAt: new Date().toISOString()
+    });
+    
+    return res.json({
+      success: true,
+      message: "Profile updated successfully"
+    });
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update profile"
+    });
   }
 };

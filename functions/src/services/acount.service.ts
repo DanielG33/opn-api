@@ -1,9 +1,10 @@
 import {db} from "../firebase";
+import {User} from "../models/user";
 import {Series} from "../models/series";
 
 export const getUserProfile = async (id: string) => {
   const doc = await db.collection("users").doc(id).get();
-  return doc.exists ? {id: doc.id, ...doc.data()} as Series : null;
+  return doc.exists ? {id: doc.id, ...doc.data()} as User : null;
 };
 
 export const updateUserProfile = async (id: string, data: any) => {

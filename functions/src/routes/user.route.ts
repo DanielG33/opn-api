@@ -19,7 +19,9 @@ import {
   followProducer,
   unfollowProducer,
   checkProducerFollowStatus,
-  uploadPlaylistThumbnail
+  uploadPlaylistThumbnail,
+  getProfile,
+  updateProfile
 } from "../controllers/user.controller";
 
 export const userRouter = Router();
@@ -53,3 +55,7 @@ userRouter.get("/followed-producers", getFollowedProducers);
 userRouter.post("/follow-producer", followProducer);
 userRouter.delete("/follow-producer/:producerId", unfollowProducer);
 userRouter.get("/follow-producer/:producerId/status", checkProducerFollowStatus);
+
+// Profile routes
+userRouter.get("/profile", getProfile);
+userRouter.put("/profile", updateProfile);
