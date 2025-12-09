@@ -483,3 +483,40 @@ export const deleteEpisode = async (id: string) => {
   await db.collection("episodes").doc(id).delete();
   return { id };
 };
+
+// Get random episodes for trending carousel
+export const getRandomEpisodes = async (limit: number = 10) => {
+  const snapshot = await db.collection("episodes")
+    // .where("status", "==", "published")
+    .limit(limit * 3) // Get more to randomize from
+    .get();
+  
+  const episodes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  
+  // Shuffle and return limited number
+  const shuffled = episodes.sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, limit);
+};
+
+// Get latest episodes
+export const getLatestEpisodes = async (limit: number = 10) => {
+  const snapshot = await db.collection("episodes")
+    // .where("status", "==", "published")
+    .orderBy("createdAt", "desc")
+    .limit(limit)
+    .get();
+  
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+};
+
+// Get episodes by category
+export const getEpisodesByCategory = async (category: string, limit: number = 10) => {
+  const snapshot = await db.collection("episodes")
+    // .where("status", "==", "published")
+    .where("category", "==", category)
+    .orderBy("createdAt", "desc")
+    .limit(limit)
+    .get();
+  
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+};

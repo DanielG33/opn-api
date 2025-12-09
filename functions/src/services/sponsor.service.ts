@@ -11,22 +11,37 @@ export const getSponsorById = async (seriesId: string, sponsorId: string): Promi
   return doc.exists ? ({id: doc.id, ...doc.data()} as Sponsor) : null;
 };
 
-export const createSponsor = async (seriesId: string, data: Partial<Sponsor>): Promise<Sponsor> => {
+export const createSponsor = async (seriesId: string, data: any): Promise<Sponsor> => {
   const timestamp = Date.now();
-  const sponsor: Sponsor = {
+  const sponsor: any = {
     name: data.name || "",
-    logoUrl: data.logoUrl || "",
     link: data.link || "",
     createdAt: timestamp,
     updatedAt: timestamp,
   };
+  
+  // Store logo as AssetRef if provided
+  if (data.logo) {
+    sponsor.logo = data.logo;
+    sponsor.logoUrl = data.logo.url || ""; // Computed field for backward compatibility
+  } else {
+    sponsor.logoUrl = "";
+  }
+  
   const ref = await db.collection(`series/${seriesId}/sponsors`).add(sponsor);
   return {id: ref.id, ...sponsor};
 };
 
-export const updateSponsor = async (seriesId: string, sponsorId: string, data: Partial<Sponsor>): Promise<Sponsor> => {
+export const updateSponsor = async (seriesId: string, sponsorId: string, data: any): Promise<Sponsor> => {
   const ref = db.collection(`series/${seriesId}/sponsors`).doc(sponsorId);
-  await ref.update({...data, updatedAt: Date.now()});
+  const updateData: any = {...data, updatedAt: Date.now()};
+  
+  // If logo AssetRef is provided, also update logoUrl for backward compatibility
+  if (data.logo) {
+    updateData.logoUrl = data.logo.url || "";
+  }
+  
+  await ref.update(updateData);
   const updated = await ref.get();
   return {id: updated.id, ...updated.data()} as Sponsor;
 };
