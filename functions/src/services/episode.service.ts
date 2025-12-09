@@ -520,3 +520,34 @@ export const getEpisodesByCategory = async (category: string, limit: number = 10
   
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 };
+
+// Get episodes by category grouped by subcategories
+export const getEpisodesBySubcategories = async (category: string, subcategoryIds: string[], limit: number = 10) => {
+  // Fetch latest episodes for each subcategory in parallel
+  const promises = subcategoryIds.map(async (subcategoryId) => {
+    const snapshot = await db.collection("episodes")
+      // .where("status", "==", "published")
+      .where("category", "==", category)
+      .where("subcategories", "array-contains", subcategoryId)
+      .orderBy("createdAt", "desc")
+      .limit(limit)
+      .get();
+    
+    return {
+      subcategoryId,
+      episodes: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+    };
+  });
+
+  const results = await Promise.all(promises);
+  
+  // Convert to object keyed by subcategory ID
+  const episodesBySubcategory: { [key: string]: any[] } = {};
+  results.forEach(result => {
+    if (result.episodes.length > 0) {
+      episodesBySubcategory[result.subcategoryId] = result.episodes;
+    }
+  });
+  
+  return episodesBySubcategory;
+};

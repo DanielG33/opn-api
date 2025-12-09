@@ -4,6 +4,7 @@ import { getSeriesById } from "../controllers/public/series.controller";
 import { getEpisode, getEpisodesById, getEpisodesBySeries, getEpisodesBySeason } from "../controllers/public/episodes.controller";
 import { signIn, signUp } from "../controllers/auth.controller";
 import { getHomeContent } from "../controllers/public/home.controller";
+import { getCategoryContent } from "../controllers/public/category.controller";
 
 export const publicRouter = Router();
 
@@ -13,6 +14,7 @@ publicRouter.get("/", (req, res) => {
 
 publicRouter.get("/home", getHomeContent);
 publicRouter.get("/categories", fetchCategories);
+publicRouter.get("/categories/:categoryId", getCategoryContent);
 
 publicRouter.get("/series/:id", getSeriesById);
 publicRouter.get("/series/:seriesId/episodes", getEpisodesBySeries);
