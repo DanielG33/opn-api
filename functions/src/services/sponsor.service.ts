@@ -1,5 +1,6 @@
 import {db} from "../firebase";
 import {Sponsor} from "../models/sponsor";
+import { getSectionsOrder, updateSeriesPageBlock } from "./series-page.service";
 
 export const getSponsorsBySeries = async (seriesId: string): Promise<Sponsor[]> => {
   const snapshot = await db.collection(`series/${seriesId}/sponsors`).get();
@@ -29,6 +30,17 @@ export const createSponsor = async (seriesId: string, data: any): Promise<Sponso
   }
   
   const ref = await db.collection(`series/${seriesId}/sponsors`).add(sponsor);
+  
+  // Add sponsorsSlider to sectionsOrder if this is the first sponsor
+  const sponsors = await getSponsorsBySeries(seriesId);
+  if (sponsors.length === 1) { // This was the first sponsor
+    const sectionsOrder = await getSectionsOrder(seriesId);
+    if (!sectionsOrder.includes('sponsorsSlider')) {
+      sectionsOrder.unshift('sponsorsSlider'); // Add at the beginning
+      await updateSeriesPageBlock(seriesId, { sectionsOrder }, { mergeFields: ['sectionsOrder'] });
+    }
+  }
+  
   return {id: ref.id, ...sponsor};
 };
 
@@ -48,4 +60,15 @@ export const updateSponsor = async (seriesId: string, sponsorId: string, data: a
 
 export const deleteSponsor = async (seriesId: string, sponsorId: string): Promise<void> => {
   await db.collection(`series/${seriesId}/sponsors`).doc(sponsorId).delete();
+  
+  // Remove sponsorsSlider from sectionsOrder if this was the last sponsor
+  const sponsors = await getSponsorsBySeries(seriesId);
+  if (sponsors.length === 0) { // That was the last sponsor
+    const sectionsOrder = await getSectionsOrder(seriesId);
+    const index = sectionsOrder.indexOf('sponsorsSlider');
+    if (index > -1) {
+      sectionsOrder.splice(index, 1);
+      await updateSeriesPageBlock(seriesId, { sectionsOrder }, { mergeFields: ['sectionsOrder'] });
+    }
+  }
 };

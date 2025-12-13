@@ -15,9 +15,9 @@ export const getPageBlocks = async (seriesId: string) => {
       const ads = (data['ads'] || {});
 
       const availableBlocks = {
-        sponsors: {
+        sponsorsSlider: {
           title: 'Sponsors carousel',
-          id: 'sponsors',
+          id: 'sponsorsSlider',
           hidden: !(data.sponsorsSlider?.items || []).filter((s: any) => s.checked).length
         },
         ...banners,

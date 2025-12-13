@@ -42,7 +42,23 @@ export const getPublicSeriesById = async (seriesId: string) => {
   }, {});
 
   const blocks = data.sectionsOrder?.map((key: string) => {
-    if (key.startsWith('banner') && data.banners[key]) {
+    if (key === 'sponsorsSlider') {
+      // Only include sponsorsSlider in blocks if there are visible (checked) sponsors
+      const visibleSponsors = (data.sponsorsSlider?.items || [])
+        .filter((item: any) => item.checked && sponsors[item.id])
+        .map((item: any) => sponsors[item.id]);
+      
+      if (visibleSponsors.length === 0) {
+        return null; // Don't render in public site if all sponsors are hidden
+      }
+      
+      return {
+        title: 'Sponsors carousel',
+        id: 'sponsorsSlider',
+        type: 'sponsorsSlider',
+        items: visibleSponsors
+      }
+    } else if (key.startsWith('banner') && data.banners[key]) {
       return {
         ...data.banners[key],
         type: 'banner'
@@ -81,13 +97,13 @@ export const getPublicSeriesById = async (seriesId: string) => {
 
   data.sponsorsSlider = {
     title: 'Sponsors carousel',
-    id: 'sponsors',
+    id: 'sponsorsSlider',
     items: (data.sponsorsSlider?.items || [])
       .filter((item: any) => item.checked && sponsors[item.id])
       .map((item: any) => sponsors[item.id])
   };
 
-  data['blocks'] = blocks;
+  data['blocks'] = blocks?.filter((block: any) => Boolean(block)) || [];
 
   return data;
 };

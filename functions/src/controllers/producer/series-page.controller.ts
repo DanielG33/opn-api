@@ -193,6 +193,7 @@ export const updateAds = async (req: Request, res: Response) => {
 export const updateSponsorSliders = async (req: Request, res: Response) => {
     const { data }: { data: any, type: string } = req.body;
     const seriesId: string = String(req.query['seriesId']);
+    
     const targetValue = {
         sponsorsSlider: data,
         updatedAt: Date.now()
