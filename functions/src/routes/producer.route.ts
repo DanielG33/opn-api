@@ -42,6 +42,13 @@ import {
   updateAssetReferences
 } from "../controllers/producer/asset.controller";
 import {
+  createFolder,
+  deleteFolder,
+  getFolder,
+  listFolders,
+  updateFolder
+} from "../controllers/producer/folder.controller";
+import {
   getBlocks,
   updateAds,
   updateBanners,
@@ -101,6 +108,13 @@ producerRouter.get("/series/:seriesId/assets", listAssets);
 producerRouter.post("/series/:seriesId/assets", createAsset);
 producerRouter.put("/series/:seriesId/assets/:assetId", updateAsset);
 producerRouter.put("/series/:seriesId/assets/:assetId/update-references", updateAssetReferences);
+
+// Folders routes
+producerRouter.get("/series/:seriesId/folders", listFolders);
+producerRouter.get("/series/:seriesId/folders/:folderId", getFolder);
+producerRouter.post("/series/:seriesId/folders", createFolder);
+producerRouter.put("/series/:seriesId/folders/:folderId", updateFolder);
+producerRouter.delete("/series/:seriesId/folders/:folderId", deleteFolder);
 
 // Sponsors routes
 producerRouter.get("/series/:seriesId/sponsors", listSponsors);
