@@ -93,3 +93,35 @@ export const deleteFolder = async (req: Request, res: Response) => {
     res.status(400).json({ success: false, error: error.message });
   }
 };
+
+export const moveFolder = async (req: Request, res: Response) => {
+  const { seriesId, folderId } = req.params;
+  const { parentId } = req.body;
+
+  try {
+    // Validate that we're not trying to move a folder into itself or its descendants
+    if (parentId === folderId) {
+      return res.status(400).json({
+        success: false,
+        error: "Cannot move a folder into itself"
+      });
+    }
+
+    // Check for circular reference (moving folder into its own descendant)
+    if (parentId) {
+      const isCircular = await FolderService.isDescendantFolder(seriesId, parentId, folderId);
+      if (isCircular) {
+        return res.status(400).json({
+          success: false,
+          error: "Cannot move a folder into its own descendant"
+        });
+      }
+    }
+
+    const updatedFolder = await FolderService.moveFolder(seriesId, folderId, parentId || null);
+    return res.status(200).json({ success: true, data: updatedFolder });
+  } catch (error: any) {
+    console.error("Error moving folder:", error);
+    return res.status(400).json({ success: false, error: error.message });
+  }
+};

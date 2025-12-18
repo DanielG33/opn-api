@@ -42,18 +42,24 @@ export const updateAsset = async (req: Request, res: Response) => {
   const updates = req.body;
 
   try {
-    // Get current asset data to compare names
+    // Get current asset data to compare
     const currentAsset = await Asset.getAssetById(seriesId, assetId);
     if (!currentAsset) {
       return res.status(404).json({success: false, error: "Asset not found"});
     }
 
-    // Only update if name has actually changed
-    if (updates.name && updates.name !== currentAsset.name) {
+    // Check if there are actual changes to make
+    const hasChanges = Object.keys(updates).some(key => {
+      return updates[key] !== currentAsset[key as keyof typeof currentAsset];
+    });
+
+    if (hasChanges) {
       const updatedAsset = await Asset.updateAsset(seriesId, assetId, updates);
       
-      // Update all references to this asset
-      await Asset.updateAssetReferences(seriesId, assetId, updates.name);
+      // If name changed, update all references to this asset
+      if (updates.name && updates.name !== currentAsset.name) {
+        await Asset.updateAssetReferences(seriesId, assetId, updates.name);
+      }
       
       return res.status(200).json({success: true, data: updatedAsset});
     } else {

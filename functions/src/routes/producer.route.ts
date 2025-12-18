@@ -46,6 +46,7 @@ import {
   deleteFolder,
   getFolder,
   listFolders,
+  moveFolder,
   updateFolder
 } from "../controllers/producer/folder.controller";
 import {
@@ -114,6 +115,7 @@ producerRouter.get("/series/:seriesId/folders", listFolders);
 producerRouter.get("/series/:seriesId/folders/:folderId", getFolder);
 producerRouter.post("/series/:seriesId/folders", createFolder);
 producerRouter.put("/series/:seriesId/folders/:folderId", updateFolder);
+producerRouter.put("/series/:seriesId/folders/:folderId/move", moveFolder);
 producerRouter.delete("/series/:seriesId/folders/:folderId", deleteFolder);
 
 // Sponsors routes
