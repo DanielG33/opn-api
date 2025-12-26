@@ -76,6 +76,13 @@ import {
   addVideoToSliderController,
   removeVideoFromSliderController
 } from "../controllers/producer/subcontent.controller";
+import {
+  getSeriesSubContentController,
+  getSubContentByIdController,
+  createSeriesSubContentController,
+  updateSeriesSubContentController,
+  deleteSeriesSubContentController
+} from "../controllers/producer/series-subcontent.controller";
 
 export const producerRouter = Router();
 
@@ -168,3 +175,10 @@ producerRouter.delete("/episodes/:episodeId/subcontent-sliders/:sliderId", delet
 // Slider-Video relationship routes
 producerRouter.post("/episodes/:episodeId/subcontent-sliders/:sliderId/videos/:videoId", addVideoToSliderController);
 producerRouter.delete("/episodes/:episodeId/subcontent-sliders/:sliderId/videos/:videoId", removeVideoFromSliderController);
+
+// Series Sub-content routes (NEW STRUCTURE)
+producerRouter.get("/series/:seriesId/sub-content", getSeriesSubContentController);
+producerRouter.post("/series/:seriesId/sub-content", createSeriesSubContentController);
+producerRouter.get("/series/:seriesId/sub-content/:subContentId", getSubContentByIdController);
+producerRouter.put("/series/:seriesId/sub-content/:subContentId", updateSeriesSubContentController);
+producerRouter.delete("/series/:seriesId/sub-content/:subContentId", deleteSeriesSubContentController);

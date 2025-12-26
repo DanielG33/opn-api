@@ -5,6 +5,7 @@ import { getEpisode, getEpisodesById, getEpisodesBySeries, getEpisodesBySeason }
 import { signIn, signUp } from "../controllers/auth.controller";
 import { getHomeContent } from "../controllers/public/home.controller";
 import { getCategoryContent } from "../controllers/public/category.controller";
+import { getPublishedSeriesSubContentController } from "../controllers/producer/series-subcontent.controller";
 
 export const publicRouter = Router();
 
@@ -19,6 +20,7 @@ publicRouter.get("/categories/:categoryId", getCategoryContent);
 publicRouter.get("/series/:id", getSeriesById);
 publicRouter.get("/series/:seriesId/episodes", getEpisodesBySeries);
 publicRouter.get("/series/:seriesId/seasons/:seasonId/episodes", getEpisodesBySeason);
+publicRouter.get("/series/:seriesId/sub-content", getPublishedSeriesSubContentController);
 publicRouter.get("/episodes", getEpisodesById);
 publicRouter.get("/episodes/:id", getEpisode);
 
