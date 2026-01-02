@@ -83,6 +83,15 @@ import {
   updateSeriesSubContentController,
   deleteSeriesSubContentController
 } from "../controllers/producer/series-subcontent.controller";
+import {
+  getSeriesSlidersController,
+  getSeriesSliderByIdController,
+  createSeriesSliderController,
+  updateSeriesSliderController,
+  deleteSeriesSliderController,
+  addItemToSeriesSliderController,
+  removeItemFromSeriesSliderController
+} from "../controllers/producer/series-sliders.controller";
 
 export const producerRouter = Router();
 
@@ -182,3 +191,14 @@ producerRouter.post("/series/:seriesId/sub-content", createSeriesSubContentContr
 producerRouter.get("/series/:seriesId/sub-content/:subContentId", getSubContentByIdController);
 producerRouter.put("/series/:seriesId/sub-content/:subContentId", updateSeriesSubContentController);
 producerRouter.delete("/series/:seriesId/sub-content/:subContentId", deleteSeriesSubContentController);
+
+// Series Sliders routes
+producerRouter.get("/series/:seriesId/sliders", getSeriesSlidersController);
+producerRouter.post("/series/:seriesId/sliders", createSeriesSliderController);
+producerRouter.get("/series/:seriesId/sliders/:sliderId", getSeriesSliderByIdController);
+producerRouter.put("/series/:seriesId/sliders/:sliderId", updateSeriesSliderController);
+producerRouter.delete("/series/:seriesId/sliders/:sliderId", deleteSeriesSliderController);
+
+// Series Slider-Item relationship routes
+producerRouter.post("/series/:seriesId/sliders/:sliderId/items/:itemId", addItemToSeriesSliderController);
+producerRouter.delete("/series/:seriesId/sliders/:sliderId/items/:itemId", removeItemFromSeriesSliderController);

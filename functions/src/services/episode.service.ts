@@ -91,7 +91,8 @@ export const createSubcontentSlider = async (episodeId: string, sliderData: any)
     title: sliderData.title,
     description: sliderData.description || '',
     sponsor: sliderData.sponsor || null,
-    videoIds: sliderData.videoIds || [], // Array of video IDs
+    items: sliderData.items || [], // Store denormalized item objects
+    videoIds: (sliderData.items || []).map((item: any) => item.id), // Keep IDs for backwards compatibility
     order: sliderData.order || 0,
     createdAt: Date.now(),
     updatedAt: Date.now(),
@@ -104,10 +105,15 @@ export const createSubcontentSlider = async (episodeId: string, sliderData: any)
 export const updateSubcontentSlider = async (episodeId: string, sliderId: string, sliderData: any) => {
   const sliderRef = db.collection(`episodes/${episodeId}/subcontentSliders`).doc(sliderId);
   
-  const updateData = {
+  const updateData: any = {
     ...sliderData,
     updatedAt: Date.now(),
   };
+
+  // If items are provided, also update videoIds for backwards compatibility
+  if (sliderData.items) {
+    updateData.videoIds = sliderData.items.map((item: any) => item.id);
+  }
 
   await sliderRef.update(updateData);
   const updated = await sliderRef.get();
@@ -130,28 +136,24 @@ export const getSubcontentSliders = async (episodeId: string, seriesId?: string)
   
   for (const sliderDoc of snapshot.docs) {
     const sliderData = sliderDoc.data();
-    const slider: any = { id: sliderDoc.id, ...sliderData };
-    
-    // Fetch actual video data for each video ID
-    if (sliderData.videoIds && sliderData.videoIds.length > 0) {
-      const videoPromises = sliderData.videoIds.map((videoId: string) => 
-        getSubcontentVideoById(episodeId, videoId)
-      );
-      
-      const videos = await Promise.all(videoPromises);
-      slider.items = videos.filter(video => video !== null); // Frontend expects 'items', not 'videos'
-    } else {
-      slider.items = [];
-    }
+    const slider: any = { 
+      id: sliderDoc.id, 
+      title: sliderData.title,
+      description: sliderData.description,
+      sponsor: sliderData.sponsor,
+      order: sliderData.order,
+      items: sliderData.items || [],
+      createdAt: sliderData.createdAt,
+      updatedAt: sliderData.updatedAt
+    };
 
-    // Populate sponsor data if sponsorId exists and seriesId is provided
+    // Populate sponsor data if sponsor ID exists and seriesId is provided
     if (sliderData.sponsor && seriesId) {
       try {
         const sponsorDoc = await db.collection(`series/${seriesId}/sponsors`).doc(sliderData.sponsor).get();
         if (sponsorDoc.exists) {
           slider.sponsor = { id: sponsorDoc.id, ...sponsorDoc.data() };
         } else {
-          // If sponsor ID doesn't exist, remove the reference
           slider.sponsor = null;
         }
       } catch (error) {
