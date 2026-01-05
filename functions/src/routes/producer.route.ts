@@ -72,6 +72,7 @@ import {
   createSubcontentSliderController,
   updateSubcontentSliderController,
   deleteSubcontentSliderController,
+  reorderSubcontentSlidersController,
   getSubcontentSlidersController,
   addVideoToSliderController,
   removeVideoFromSliderController
@@ -178,6 +179,7 @@ producerRouter.delete("/episodes/:episodeId/subcontent-videos/:videoId", deleteS
 // Subcontent Sliders routes
 producerRouter.get("/episodes/:episodeId/subcontent-sliders", getSubcontentSlidersController);
 producerRouter.post("/episodes/:episodeId/subcontent-sliders", createSubcontentSliderController);
+producerRouter.put("/episodes/:episodeId/subcontent-sliders/reorder", reorderSubcontentSlidersController);
 producerRouter.put("/episodes/:episodeId/subcontent-sliders/:sliderId", updateSubcontentSliderController);
 producerRouter.delete("/episodes/:episodeId/subcontent-sliders/:sliderId", deleteSubcontentSliderController);
 

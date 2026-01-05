@@ -8,6 +8,8 @@ interface SeriesSlider {
   sponsor?: any;
   items: string[]; // Array of sub-content IDs
   order?: number;
+  showOnSeriesPage?: boolean;
+  showOnPlayerPage?: boolean;
   createdAt?: number;
   updatedAt?: number;
 }
@@ -29,6 +31,8 @@ export const getSeriesSliders = async (seriesId: string): Promise<SeriesSlider[]
       description: sliderData.description || '',
       sponsor: sliderData.sponsor || null,
       order: sliderData.order || 0,
+      showOnSeriesPage: sliderData.showOnSeriesPage || false,
+      showOnPlayerPage: sliderData.showOnPlayerPage || false,
       createdAt: sliderData.createdAt,
       updatedAt: sliderData.updatedAt,
       items: []
@@ -68,6 +72,8 @@ export const getSeriesSliderById = async (seriesId: string, sliderId: string): P
     description: sliderData!.description || '',
     sponsor: sliderData!.sponsor || null,
     order: sliderData!.order || 0,
+    showOnSeriesPage: sliderData!.showOnSeriesPage || false,
+    showOnPlayerPage: sliderData!.showOnPlayerPage || false,
     createdAt: sliderData!.createdAt,
     updatedAt: sliderData!.updatedAt,
     items: []
@@ -101,6 +107,8 @@ export const createSeriesSlider = async (seriesId: string, sliderData: Omit<Seri
     sponsor: sliderData.sponsor || null,
     items: sliderData.items || [], // Array of sub-content IDs
     order: sliderData.order || 0,
+    showOnSeriesPage: sliderData.showOnSeriesPage || false,
+    showOnPlayerPage: sliderData.showOnPlayerPage || false,
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };

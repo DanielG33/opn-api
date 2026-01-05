@@ -10,9 +10,9 @@ import { authRouter } from './routes/auth.route';
 
 const app = express();
 app.use(cors({
-  origin: true, // Allow all origins for now
+  origin: ['https://opn-workspace.web.app', 'https://opn-public.web.app'],
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());

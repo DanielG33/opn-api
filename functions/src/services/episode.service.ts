@@ -87,13 +87,20 @@ export const getSubcontentVideoById = async (episodeId: string, videoId: string)
 export const createSubcontentSlider = async (episodeId: string, sliderData: any) => {
   const slidersRef = db.collection(`episodes/${episodeId}/subcontentSliders`);
   
+  // Get the highest order value to append new slider at the end
+  let order = sliderData.order;
+  if (order === undefined || order === null) {
+    const snapshot = await slidersRef.orderBy('order', 'desc').limit(1).get();
+    order = snapshot.empty ? 0 : (snapshot.docs[0].data().order || 0) + 1;
+  }
+  
   const slider = {
     title: sliderData.title,
     description: sliderData.description || '',
     sponsor: sliderData.sponsor || null,
     items: sliderData.items || [], // Store denormalized item objects
     videoIds: (sliderData.items || []).map((item: any) => item.id), // Keep IDs for backwards compatibility
-    order: sliderData.order || 0,
+    order: order,
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };
@@ -124,6 +131,31 @@ export const deleteSubcontentSlider = async (episodeId: string, sliderId: string
   const sliderRef = db.collection(`episodes/${episodeId}/subcontentSliders`).doc(sliderId);
   await sliderRef.delete();
   return { id: sliderId };
+};
+
+export const reorderSubcontentSliders = async (episodeId: string, sliders: { id: string; order: number }[], displayOrder?: any[]) => {
+  const batch = db.batch();
+  const slidersRef = db.collection(`episodes/${episodeId}/subcontentSliders`);
+  
+  sliders.forEach(slider => {
+    const sliderRef = slidersRef.doc(slider.id);
+    batch.update(sliderRef, { 
+      order: slider.order,
+      updatedAt: Date.now()
+    });
+  });
+  
+  // Store the display order (which includes series sliders) in the episode document
+  if (displayOrder) {
+    const episodeRef = db.collection('episodes').doc(episodeId);
+    batch.update(episodeRef, {
+      slidersDisplayOrder: displayOrder,
+      updatedAt: Date.now()
+    });
+  }
+  
+  await batch.commit();
+  return { success: true, message: 'Sliders reordered successfully' };
 };
 
 export const getSubcontentSliders = async (episodeId: string, seriesId?: string) => {
@@ -307,8 +339,49 @@ export const getEpisodeById = async (id: string) => {
   }
   
   // Get subcontent sliders with their videos for this episode
-  const subcontent = await getSubcontentSliders(id, episodeData.seriesId);
-  episodeData.subcontent = subcontent;
+  // Also include series sliders marked for player page
+  const episodeSliders = await getSubcontentSliders(id, episodeData.seriesId);
+  
+  // Get series sliders marked for player page
+  let allSliders = [...episodeSliders];
+  
+  if (episodeData.seriesId) {
+    try {
+      const { getSeriesSliders } = require('./series-sliders.service');
+      const seriesSliders = await getSeriesSliders(episodeData.seriesId);
+      
+      // Filter to only include sliders marked for player page
+      const playerPageSliders = seriesSliders
+        .filter((slider: any) => slider.showOnPlayerPage)
+        .map((slider: any) => ({
+          ...slider,
+          isSeriesSlider: true
+        }));
+      
+      // Merge sliders
+      allSliders = [...episodeSliders, ...playerPageSliders];
+      
+      // Apply custom display order if it exists
+      if (episodeData.slidersDisplayOrder && Array.isArray(episodeData.slidersDisplayOrder)) {
+        const orderMap = new Map();
+        episodeData.slidersDisplayOrder.forEach((item: any, index: number) => {
+          orderMap.set(`${item.isSeriesSlider ? 'series' : 'episode'}_${item.id}`, index);
+        });
+        
+        allSliders.sort((a, b) => {
+          const keyA = `${a.isSeriesSlider ? 'series' : 'episode'}_${a.id}`;
+          const keyB = `${b.isSeriesSlider ? 'series' : 'episode'}_${b.id}`;
+          const orderA = orderMap.has(keyA) ? orderMap.get(keyA) : 9999;
+          const orderB = orderMap.has(keyB) ? orderMap.get(keyB) : 9999;
+          return orderA - orderB;
+        });
+      }
+    } catch (error) {
+      console.error('Error loading series sliders for player page:', error);
+    }
+  }
+  
+  episodeData.subcontent = allSliders;
   
   return episodeData;
 };

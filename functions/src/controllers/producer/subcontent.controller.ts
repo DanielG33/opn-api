@@ -9,6 +9,7 @@ import {
   updateSubcontentSlider,
   deleteSubcontentSlider,
   getSubcontentSliders,
+  reorderSubcontentSliders,
   addVideoToSlider,
   removeVideoFromSlider,
   getEpisodeById
@@ -118,6 +119,23 @@ export const deleteSubcontentSliderController = async (req: Request, res: Respon
   } catch (error) {
     console.error("Error deleting subcontent slider:", error);
     res.status(500).json({ error: "Failed to delete subcontent slider" });
+  }
+};
+
+export const reorderSubcontentSlidersController = async (req: Request, res: Response) => {
+  try {
+    const { episodeId } = req.params;
+    const { sliders, displayOrder } = req.body;
+
+    if (!sliders || !Array.isArray(sliders)) {
+      return res.status(400).json({ error: "Invalid sliders data" });
+    }
+
+    const result = await reorderSubcontentSliders(episodeId, sliders, displayOrder);
+    res.json(result);
+  } catch (error) {
+    console.error("Error reordering subcontent sliders:", error);
+    res.status(500).json({ error: "Failed to reorder subcontent sliders" });
   }
 };
 

@@ -9,4 +9,7 @@ export { onVideoRatingWrite } from "./functions/reactionTrigger";
 // https://firebase.google.com/docs/functions/typescript
 
 // initializeApp();
-export const api = onRequest(app);
+export const api = onRequest({
+  cors: ['https://opn-workspace.web.app', 'https://opn-public.web.app'],
+  maxInstances: 10
+}, app);
