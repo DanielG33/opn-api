@@ -29,7 +29,8 @@ export const getPublishedSeriesSubContentController = async (req: Request, res: 
   try {
     const { seriesId } = req.params;
     
-    const subContent = await getPublishedSeriesSubContent(seriesId);
+    // This is called from public route, so check series publication status
+    const subContent = await getPublishedSeriesSubContent(seriesId, true);
     res.json(subContent);
   } catch (error) {
     console.error("Error fetching published series sub-content:", error);

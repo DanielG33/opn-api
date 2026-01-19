@@ -1,6 +1,10 @@
 import { Request, Response } from 'express';
 import { getAllPublicSeries, getPublicSeriesById } from '../../services/series.service';
 
+/**
+ * PUBLIC ENDPOINT: List all published series
+ * Filters by series publicationStatus == PUBLISHED (not content draft flags)
+ */
 export const listPublicSeries = async (req: Request, res: Response) => {
   try {
     const seriesList = await getAllPublicSeries();
@@ -11,6 +15,10 @@ export const listPublicSeries = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * PUBLIC ENDPOINT: Get series by ID
+ * Returns 404 if series publicationStatus != PUBLISHED (not content draft flags)
+ */
 export const getSeriesById = async (req: Request, res: Response) => {
   const { id } = req.params;
   try {

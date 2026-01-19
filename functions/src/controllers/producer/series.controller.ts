@@ -3,17 +3,51 @@ import {
   createSeries,
   deleteSeriesById,
   getSeriesByProducerId,
+  getSeriesByStatus,
   getSeriesById,
   updateSeriesById,
   checkSlugAvailability
 } from "../../services/series.service";
 import {db} from "../../firebase";
+import { SeriesPublicationStatus } from "../../types/series-status";
 
+/**
+ * ADMIN ENDPOINT: List producer's series or filter by publication workflow status
+ * NOTE: Returns series-draft data (admin working copy), enriched with publicationStatus
+ * from series collection. Does NOT use content-level draft flags.
+ */
 export const listProducerSeries = async (req: Request, res: Response) => {
   const uid = req.user?.uid as string;
   const userDoc = await db.collection("users").doc(uid).get();
   if (!userDoc.exists) return res.status(404).json({message: "User not found"});
 
+  // Check if filtering by status (for admin review)
+  const statusFilter = req.query.status as string;
+  if (statusFilter) {
+    // Validate status
+    if (!Object.values(SeriesPublicationStatus).includes(statusFilter as SeriesPublicationStatus)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status filter'
+      });
+    }
+
+    // Get series by status (admin/super admin only)
+    const userData = userDoc.data();
+    const isSuperAdmin = userData?.isSuperAdmin || userData?.role === 'super_admin';
+    
+    if (!isSuperAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only super admins can filter by status'
+      });
+    }
+
+    const series = await getSeriesByStatus(statusFilter as SeriesPublicationStatus);
+    return res.json({success: true, data: series});
+  }
+
+  // Default: get series by producer
   const producerId = String(userDoc.data()?.producerId);
   const series = await getSeriesByProducerId(producerId);
   return res.json({success: true, data: series});

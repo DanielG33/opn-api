@@ -13,6 +13,8 @@ interface SeriesSubContent {
     url: string;
   };
   type: string; // video, article, gallery, etc.
+  // Content-level draft flag (independent of series publicationStatus)
+  // This marks individual subcontent items as draft vs published within the series
   status: 'draft' | 'published';
   seriesId: string;
   createdAt: number;
@@ -84,7 +86,27 @@ export const deleteSeriesSubContent = async (seriesId: string, subContentId: str
 };
 
 // Get published sub-content for public consumption
-export const getPublishedSeriesSubContent = async (seriesId: string) => {
+// Filters by BOTH:
+// 1. Series publication workflow (publicationStatus == PUBLISHED)
+// 2. Content draft status (subcontent.status == 'published')
+export const getPublishedSeriesSubContent = async (seriesId: string, checkSeriesPublicationStatus: boolean = false) => {
+  // For public endpoints, verify the series publication workflow status is PUBLISHED
+  if (checkSeriesPublicationStatus) {
+    const { SeriesPublicationStatus } = require('../types/series-status');
+    try {
+      const seriesDoc = await db.collection('series').doc(seriesId).get();
+      if (!seriesDoc.exists) return [];
+      
+      const seriesData = seriesDoc.data();
+      if (seriesData?.publicationStatus !== SeriesPublicationStatus.PUBLISHED) {
+        return []; // Series publication workflow not PUBLISHED, return no sub-content
+      }
+    } catch (error) {
+      console.error('Error checking series publication workflow status:', error);
+      return []; // On error, don't expose sub-content
+    }
+  }
+  
   const snapshot = await db
     .collection(`series/${seriesId}/subContent`)
     .where('status', '==', 'published')

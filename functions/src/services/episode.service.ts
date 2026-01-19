@@ -1,6 +1,52 @@
 // src/services/episode.service.ts
 import { db } from "../firebase";
+import { SeriesPublicationStatus } from "../types/series-status";
 // import { format } from 'date-fns';
+
+/**
+ * Helper function to filter episodes by series publication workflow status
+ * Only returns episodes from series where publicationStatus == PUBLISHED
+ * This is separate from any episode-level or content-level draft flags
+ */
+const filterEpisodesBySeriesStatus = async (episodes: any[]): Promise<any[]> => {
+  const episodesWithSeriesId = episodes.filter(ep => ep.seriesId);
+  
+  if (episodesWithSeriesId.length === 0) {
+    return episodes; // No series IDs to check
+  }
+  
+  // Get unique series IDs
+  const uniqueSeriesIds = [...new Set(episodesWithSeriesId.map(ep => ep.seriesId))];
+  
+  // Fetch all series in parallel
+  const seriesPromises = uniqueSeriesIds.map(async (seriesId) => {
+    try {
+      const seriesDoc = await db.collection('series').doc(seriesId).get();
+      if (seriesDoc.exists) {
+        const seriesData = seriesDoc.data();
+        return {
+          id: seriesId,
+          publicationStatus: seriesData?.publicationStatus
+        };
+      }
+    } catch (error) {
+      console.error(`Error fetching series ${seriesId}:`, error);
+    }
+    return { id: seriesId, publicationStatus: null };
+  });
+  
+  const seriesResults = await Promise.all(seriesPromises);
+  const seriesStatusMap = new Map(
+    seriesResults.map(s => [s.id, s.publicationStatus])
+  );
+  
+  // Filter episodes to only include those from series with publicationStatus == PUBLISHED
+  return episodes.filter(episode => {
+    if (!episode.seriesId) return true; // Keep episodes without series ID
+    const status = seriesStatusMap.get(episode.seriesId);
+    return status === SeriesPublicationStatus.PUBLISHED;
+  });
+};
 
 // TODO: enable draft system
 export const getEpisodesByFilters = async (filters: { [key: string]: string }) => {
@@ -20,6 +66,7 @@ export const createSubcontentVideo = async (episodeId: string, videoData: any) =
   
   const video = {
     ...videoData,
+    // Content-level draft flag for individual videos (not series publicationStatus)
     status: videoData.status || 'draft', // draft, published
     createdAt: Date.now(),
     updatedAt: Date.now(),
@@ -297,7 +344,7 @@ const updateSubcontentSliders = async (episodeId: string, subcontent: any[]) => 
   return updatedSliders;
 };
 
-export const getEpisodeById = async (id: string) => {
+export const getEpisodeById = async (id: string, checkSeriesPublicationStatus: boolean = false) => {
   //   const doc = await db.collection('episodes-draft').doc(id).get();
   const doc = await db.collection("episodes").doc(id).get();
   if (!doc.exists) return null;
@@ -310,10 +357,22 @@ export const getEpisodeById = async (id: string) => {
       const seriesDoc = await db.collection('series').doc(episodeData.seriesId).get();
       if (seriesDoc.exists) {
         const seriesData = seriesDoc.data();
+        
+        // For public endpoints, check series publication workflow status (not episode draft status)
+        if (checkSeriesPublicationStatus && seriesData?.publicationStatus !== 'PUBLISHED') {
+          return null; // Episode belongs to non-published series
+        }
+        
         episodeData.seriesName = seriesData?.title || 'Unknown Series';
+      } else if (checkSeriesPublicationStatus) {
+        // Series doesn't exist, don't return episode
+        return null;
       }
     } catch (error) {
       console.error('Error fetching series data for episode:', error);
+      if (checkSeriesPublicationStatus) {
+        return null; // On error, don't expose episode on public site
+      }
     }
   }
   
@@ -386,19 +445,36 @@ export const getEpisodeById = async (id: string) => {
   return episodeData;
 };
 
-export const getEpisodeListByIds = async (ids: string[]) => {
+export const getEpisodeListByIds = async (ids: string[], checkSeriesPublicationStatus: boolean = false) => {
   if (ids.length === 0) return [];
 
   const results = await Promise.all(
     ids.map(async id => {
-      return getEpisodeById(id);
+      return getEpisodeById(id, checkSeriesPublicationStatus);
     })
   );
 
   return results.filter((episode) => Boolean(episode));
 };
 
-export const getEpisodesBySeriesId = async (seriesId: string, excludeEpisodeId?: string) => {
+export const getEpisodesBySeriesId = async (seriesId: string, excludeEpisodeId?: string, checkSeriesPublicationStatus: boolean = false) => {
+  // For public endpoints, verify the series publication workflow status is PUBLISHED
+  // This filters by series publicationStatus, NOT by any episode-level draft flags
+  if (checkSeriesPublicationStatus) {
+    try {
+      const seriesDoc = await db.collection('series').doc(seriesId).get();
+      if (!seriesDoc.exists) return [];
+      
+      const seriesData = seriesDoc.data();
+      if (seriesData?.publicationStatus !== SeriesPublicationStatus.PUBLISHED) {
+        return []; // Series not published, return no episodes
+      }
+    } catch (error) {
+      console.error('Error checking series publication status:', error);
+      return []; // On error, don't expose episodes
+    }
+  }
+  
   let query: FirebaseFirestore.Query = db.collection("episodes")
     .where("seriesId", "==", seriesId)
     .orderBy("createdAt", "desc");
@@ -430,7 +506,24 @@ export const getEpisodesBySeriesId = async (seriesId: string, excludeEpisodeId?:
   return episodes;
 };
 
-export const getEpisodesBySeasonId = async (seriesId: string, seasonId: string, excludeEpisodeId?: string) => {
+export const getEpisodesBySeasonId = async (seriesId: string, seasonId: string, excludeEpisodeId?: string, checkSeriesPublicationStatus: boolean = false) => {
+  // For public endpoints, verify the series publication workflow status is PUBLISHED
+  // This filters by series publicationStatus, NOT by any episode-level draft flags
+  if (checkSeriesPublicationStatus) {
+    try {
+      const seriesDoc = await db.collection('series').doc(seriesId).get();
+      if (!seriesDoc.exists) return [];
+      
+      const seriesData = seriesDoc.data();
+      if (seriesData?.publicationStatus !== SeriesPublicationStatus.PUBLISHED) {
+        return []; // Series not published, return no episodes
+      }
+    } catch (error) {
+      console.error('Error checking series publication status:', error);
+      return []; // On error, don't expose episodes
+    }
+  }
+  
   let query: FirebaseFirestore.Query = db.collection("episodes")
     .where("seriesId", "==", seriesId)
     .where("seasonId", "==", seasonId)
@@ -568,8 +661,11 @@ export const getRandomEpisodes = async (limit: number = 10) => {
   
   const episodes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   
+  // Filter out episodes from non-published series
+  const filteredEpisodes = await filterEpisodesBySeriesStatus(episodes);
+  
   // Shuffle and return limited number
-  const shuffled = episodes.sort(() => Math.random() - 0.5);
+  const shuffled = filteredEpisodes.sort(() => Math.random() - 0.5);
   return shuffled.slice(0, limit);
 };
 
@@ -578,10 +674,15 @@ export const getLatestEpisodes = async (limit: number = 10) => {
   const snapshot = await db.collection("episodes")
     // .where("status", "==", "published")
     .orderBy("createdAt", "desc")
-    .limit(limit)
+    .limit(limit * 2) // Fetch more to account for filtering
     .get();
   
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  const episodes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  
+  // Filter out episodes from non-published series
+  const filteredEpisodes = await filterEpisodesBySeriesStatus(episodes);
+  
+  return filteredEpisodes.slice(0, limit);
 };
 
 // Get episodes by category
@@ -590,10 +691,15 @@ export const getEpisodesByCategory = async (category: string, limit: number = 10
     // .where("status", "==", "published")
     .where("category", "==", category)
     .orderBy("createdAt", "desc")
-    .limit(limit)
+    .limit(limit * 2) // Fetch more to account for filtering
     .get();
   
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  const episodes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  
+  // Filter out episodes from non-published series
+  const filteredEpisodes = await filterEpisodesBySeriesStatus(episodes);
+  
+  return filteredEpisodes.slice(0, limit);
 };
 
 // Get episodes by category grouped by subcategories
@@ -605,12 +711,17 @@ export const getEpisodesBySubcategories = async (category: string, subcategoryId
       .where("category", "==", category)
       .where("subcategories", "array-contains", subcategoryId)
       .orderBy("createdAt", "desc")
-      .limit(limit)
+      .limit(limit * 2) // Fetch more to account for filtering
       .get();
+    
+    const episodes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    // Filter out episodes from non-published series
+    const filteredEpisodes = await filterEpisodesBySeriesStatus(episodes);
     
     return {
       subcategoryId,
-      episodes: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      episodes: filteredEpisodes.slice(0, limit)
     };
   });
 

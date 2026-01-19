@@ -11,6 +11,13 @@ import {
   // submitProducerSeries,
 } from "../controllers/producer/series.controller";
 import {
+  submitSeriesForReview,
+  approveSeriesController,
+  rejectSeriesController,
+  hideSeriesController,
+  publishUpdatesController,
+} from "../controllers/admin/series-workflow.controller";
+import {
   createProducerEpisode,
   deleteProducerEpisode,
   getProducerEpisode,
@@ -114,7 +121,13 @@ producerRouter.post("/series", createProducerSeries);
 producerRouter.get("/series/:id", getProducerSeries);
 producerRouter.patch("/series/:id", updateProducerSeries);
 producerRouter.delete('/series/:id', deleteProducerSeries);
-// producerRouter.post('/series/:id/submit', submitProducerSeries);
+
+// Series workflow routes
+producerRouter.post('/series/:seriesId/submit-review', submitSeriesForReview);
+producerRouter.post('/series/:seriesId/publish-updates', publishUpdatesController);
+producerRouter.post('/series/:seriesId/approve', approveSeriesController);
+producerRouter.post('/series/:seriesId/reject', rejectSeriesController);
+producerRouter.post('/series/:seriesId/hide', hideSeriesController);
 
 // Seasons routes
 producerRouter.get("/series/:seriesId/seasons", listSeasons);

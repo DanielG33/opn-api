@@ -5,7 +5,7 @@ export const getEpisodesById = async (req: Request, res: Response) => {
     const ids = String(req.query.ids || req.query.ids).split(',');
 
     try {
-        const episodesList = await getEpisodeListByIds(ids);
+        const episodesList = await getEpisodeListByIds(ids, true); // Check series publication status
         res.status(200).json({ success: true, data: episodesList });
     } catch (error) {
         console.error(error);
@@ -17,7 +17,7 @@ export const getEpisode = async (req: Request, res: Response) => {
     const { id } = req.params;
 
     try {
-        const episode = await getEpisodeById(id);
+        const episode = await getEpisodeById(id, true); // Check series publication status
         if (!episode) {
             return res.status(404).json({ success: false, message: 'Episode not found' });
         }
@@ -33,7 +33,7 @@ export const getEpisodesBySeries = async (req: Request, res: Response) => {
     const excludeEpisodeId = req.query.exclude as string;
 
     try {
-        const episodes = await getEpisodesBySeriesId(seriesId, excludeEpisodeId);
+        const episodes = await getEpisodesBySeriesId(seriesId, excludeEpisodeId, true); // Check series publication status
         res.status(200).json({ success: true, data: episodes });
     } catch (error) {
         console.error(error);
@@ -46,7 +46,7 @@ export const getEpisodesBySeason = async (req: Request, res: Response) => {
     const excludeEpisodeId = req.query.exclude as string;
 
     try {
-        const episodes = await getEpisodesBySeasonId(seriesId, seasonId, excludeEpisodeId);
+        const episodes = await getEpisodesBySeasonId(seriesId, seasonId, excludeEpisodeId, true); // Check series publication status
         res.status(200).json({ success: true, data: episodes });
     } catch (error) {
         console.error(error);
