@@ -41,6 +41,36 @@ export const getPublicSeriesById = async (seriesId: string) => {
     return acc;
   }, {});
 
+  // Fetch series sliders marked for series page
+  const seriesSlidersSnap = await db.collection(`series/${seriesId}/sliders`)
+    .where('showOnSeriesPage', '==', true)
+    .get();
+  
+  const seriesSliders: any = {};
+  for (const sliderDoc of seriesSlidersSnap.docs) {
+    const sliderData = sliderDoc.data();
+    const items = [];
+    
+    // Fetch sub-content items for this slider
+    if (sliderData.items && Array.isArray(sliderData.items)) {
+      for (const itemId of sliderData.items) {
+        const itemDoc = await db.collection(`series/${seriesId}/subContent`).doc(itemId).get();
+        if (itemDoc.exists) {
+          items.push({ id: itemDoc.id, ...itemDoc.data() });
+        }
+      }
+    }
+    
+    seriesSliders[sliderDoc.id] = {
+      id: sliderDoc.id,
+      title: sliderData.title,
+      description: sliderData.description,
+      sponsor: sliderData.sponsor,
+      type: 'series_slider',
+      items
+    };
+  }
+
   const blocks = data.sectionsOrder?.map((key: string) => {
     if (key === 'sponsorsSlider') {
       // Only include sponsorsSlider in blocks if there are visible (checked) sponsors
@@ -76,6 +106,13 @@ export const getPublicSeriesById = async (seriesId: string) => {
         ...gallery,
         type: 'gallery',
         sponsor: gallery.sponsor ? sponsors[gallery.sponsor] : null
+      }
+    } else if (seriesSliders[key]) {
+      // Handle series slider blocks
+      const slider = seriesSliders[key];
+      return {
+        ...slider,
+        sponsor: slider.sponsor ? sponsors[slider.sponsor] : null
       }
     } else {
       return null

@@ -14,6 +14,22 @@ export const getPageBlocks = async (seriesId: string) => {
       const banners = (data['banners'] || {});
       const ads = (data['ads'] || {});
 
+      // Fetch series sliders marked for series page
+      const seriesSlidersSnapshot = await db
+        .collection(`series/${seriesId}/sliders`)
+        .where('showOnSeriesPage', '==', true)
+        .get();
+      
+      const seriesSliders: any = {};
+      seriesSlidersSnapshot.docs.forEach(doc => {
+        seriesSliders[doc.id] = {
+          id: doc.id,
+          title: doc.data().title,
+          type: 'series_slider',
+          ...doc.data()
+        };
+      });
+
       const availableBlocks = {
         sponsorsSlider: {
           title: 'Sponsors carousel',
@@ -23,7 +39,8 @@ export const getPageBlocks = async (seriesId: string) => {
         ...banners,
         ...ads,
         ...episodes_sliders,
-        ...galleries
+        ...galleries,
+        ...seriesSliders
       };
 
       const blocks = sectionsOrder.map(key => (availableBlocks[key] || null))

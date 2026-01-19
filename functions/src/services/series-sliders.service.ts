@@ -1,4 +1,5 @@
 import { db } from "../firebase";
+import { getSectionsOrder, updateSeriesPageBlock } from "./series-page.service";
 
 // Series slider interface
 interface SeriesSlider {
@@ -114,6 +115,14 @@ export const createSeriesSlider = async (seriesId: string, sliderData: Omit<Seri
   };
 
   const docRef = await slidersRef.add(slider);
+  
+  // If slider is marked for series page, add it to sectionsOrder
+  if (slider.showOnSeriesPage) {
+    const sectionsOrder = await getSectionsOrder(seriesId);
+    sectionsOrder.push(docRef.id);
+    await updateSeriesPageBlock(seriesId, { sectionsOrder });
+  }
+  
   return { id: docRef.id, ...slider };
 };
 
@@ -121,12 +130,34 @@ export const createSeriesSlider = async (seriesId: string, sliderData: Omit<Seri
 export const updateSeriesSlider = async (seriesId: string, sliderId: string, sliderData: Partial<SeriesSlider>) => {
   const sliderRef = db.collection(`series/${seriesId}/sliders`).doc(sliderId);
   
+  // Get current slider data to check showOnSeriesPage changes
+  const currentDoc = await sliderRef.get();
+  const currentData = currentDoc.data();
+  const previousShowOnSeriesPage = currentData?.showOnSeriesPage || false;
+  const newShowOnSeriesPage = sliderData.showOnSeriesPage !== undefined ? sliderData.showOnSeriesPage : previousShowOnSeriesPage;
+  
   const updateData = {
     ...sliderData,
     updatedAt: Date.now(),
   };
 
   await sliderRef.update(updateData);
+  
+  // Handle sectionsOrder changes
+  if (previousShowOnSeriesPage !== newShowOnSeriesPage) {
+    const sectionsOrder = await getSectionsOrder(seriesId);
+    
+    if (newShowOnSeriesPage && !sectionsOrder.includes(sliderId)) {
+      // Add to sectionsOrder if now marked for series page
+      sectionsOrder.push(sliderId);
+      await updateSeriesPageBlock(seriesId, { sectionsOrder });
+    } else if (!newShowOnSeriesPage && sectionsOrder.includes(sliderId)) {
+      // Remove from sectionsOrder if unmarked
+      const updatedSectionsOrder = sectionsOrder.filter(id => id !== sliderId);
+      await updateSeriesPageBlock(seriesId, { sectionsOrder: updatedSectionsOrder });
+    }
+  }
+  
   const updated = await sliderRef.get();
   return { id: updated.id, ...updated.data() };
 };
@@ -134,6 +165,14 @@ export const updateSeriesSlider = async (seriesId: string, sliderId: string, sli
 // Delete a series slider
 export const deleteSeriesSlider = async (seriesId: string, sliderId: string) => {
   const sliderRef = db.collection(`series/${seriesId}/sliders`).doc(sliderId);
+  
+  // Remove from sectionsOrder before deleting
+  const sectionsOrder = await getSectionsOrder(seriesId);
+  if (sectionsOrder.includes(sliderId)) {
+    const updatedSectionsOrder = sectionsOrder.filter(id => id !== sliderId);
+    await updateSeriesPageBlock(seriesId, { sectionsOrder: updatedSectionsOrder });
+  }
+  
   await sliderRef.delete();
   return { id: sliderId };
 };

@@ -132,10 +132,10 @@ export const reorderSubcontentSlidersController = async (req: Request, res: Resp
     }
 
     const result = await reorderSubcontentSliders(episodeId, sliders, displayOrder);
-    res.json(result);
+    return res.json(result);
   } catch (error) {
     console.error("Error reordering subcontent sliders:", error);
-    res.status(500).json({ error: "Failed to reorder subcontent sliders" });
+    return res.status(500).json({ error: "Failed to reorder subcontent sliders" });
   }
 };
 
