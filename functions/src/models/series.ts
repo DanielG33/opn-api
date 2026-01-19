@@ -3,6 +3,7 @@ import {Producer} from "./producer";
 
 export interface Series {
     id: string;
+    slug: string;
     title: string;
     description: string;
     categories: string[];

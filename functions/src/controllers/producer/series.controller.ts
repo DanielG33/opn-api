@@ -4,7 +4,8 @@ import {
   deleteSeriesById,
   getSeriesByProducerId,
   getSeriesById,
-  updateSeriesById
+  updateSeriesById,
+  checkSlugAvailability
 } from "../../services/series.service";
 import {db} from "../../firebase";
 
@@ -35,6 +36,29 @@ export const createProducerSeries = async (req: Request, res: Response) => {
     const series = await createSeries(req.body, producerId, producerDoc.data());
     return res.status(201).json({success: true, data: series});
   } catch (err: any) {
+    // Handle specific error codes
+    if (err.code === 'SLUG_TAKEN') {
+      return res.status(409).json({
+        success: false,
+        error: {
+          code: err.code,
+          message: err.message,
+          suggestedSlug: err.suggestedSlug
+        }
+      });
+    }
+    
+    if (err.code === 'SLUG_INVALID') {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: err.code,
+          message: err.message
+        }
+      });
+    }
+
+    // Generic error
     return res.status(422).json({
       success: false,
       error: {
@@ -64,9 +88,43 @@ export const updateProducerSeries = async (req: Request, res: Response) => {
   const userDoc = await db.collection("users").doc(uid).get();
   if (!userDoc.exists) return res.status(404).json({message: "User not found"});
   const producerId = String(userDoc.data()?.producerId);
-  const updated = await updateSeriesById(id, updates, producerId);
-  if (!updated) return res.status(403).json({message: "Forbidden"});
-  return res.json({success: true, message: "Series updated"});
+  
+  try {
+    const updated = await updateSeriesById(id, updates, producerId);
+    if (!updated) return res.status(403).json({message: "Forbidden"});
+    return res.json({success: true, message: "Series updated"});
+  } catch (err: any) {
+    // Handle specific error codes
+    if (err.code === 'SLUG_TAKEN') {
+      return res.status(409).json({
+        success: false,
+        error: {
+          code: err.code,
+          message: err.message,
+          suggestedSlug: err.suggestedSlug
+        }
+      });
+    }
+    
+    if (err.code === 'SLUG_INVALID') {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: err.code,
+          message: err.message
+        }
+      });
+    }
+
+    // Generic error
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: err.code || "unknown",
+        message: err.message || "Failed to update series"
+      }
+    });
+  }
 };
 
 export const deleteProducerSeries = async (req: Request, res: Response) => {
@@ -92,4 +150,32 @@ export const submitProducerSeries = async (req: Request, res: Response) => {
   // const submitted = await submitSeriesForReview(id, producerId);
   // if (!submitted) return res.status(403).json({ message: 'Forbidden' });
   // return res.json({ success: true, message: 'Series submitted for review' });
+};
+
+export const checkSeriesSlugAvailability = async (req: Request, res: Response) => {
+  const {slug} = req.query;
+
+  if (!slug || typeof slug !== 'string') {
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: 'MISSING_SLUG',
+        message: 'Slug parameter is required'
+      }
+    });
+  }
+
+  try {
+    const result = await checkSlugAvailability(slug);
+    return res.json({success: true, data: result});
+  } catch (error) {
+    console.error('Error checking slug availability:', error);
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to check slug availability'
+      }
+    });
+  }
 };

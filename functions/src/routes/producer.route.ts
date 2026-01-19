@@ -7,6 +7,7 @@ import {
   createProducerSeries,
   updateProducerSeries,
   deleteProducerSeries,
+  checkSeriesSlugAvailability,
   // submitProducerSeries,
 } from "../controllers/producer/series.controller";
 import {
@@ -108,6 +109,7 @@ producerRouter.get("/", (req, res) => {
 // Series routes
 producerRouter.get("/categories", fetchCategories);
 producerRouter.get("/series", listProducerSeries);
+producerRouter.get("/series/slug-availability", checkSeriesSlugAvailability);
 producerRouter.post("/series", createProducerSeries);
 producerRouter.get("/series/:id", getProducerSeries);
 producerRouter.patch("/series/:id", updateProducerSeries);
