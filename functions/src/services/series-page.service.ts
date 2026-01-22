@@ -1,8 +1,12 @@
 import { db } from "../firebase";
 
-// TODO: enable draft system
+/**
+ * Series page editing - always reads/writes from series-draft collection
+ * Only published data appears in public series collection
+ */
 export const getPageBlocks = async (seriesId: string) => {
-  return db.collection('series').doc(seriesId).get()
+  // Read from draft collection for admin editing
+  return db.collection('series-draft').doc(seriesId).get()
     .then(async doc => {
       if (!doc.exists)
         throw new Error('Resource not found');
@@ -50,14 +54,22 @@ export const getPageBlocks = async (seriesId: string) => {
     })
 }
 
+/**
+ * Update series page block in draft collection
+ * Writes to series-draft (admin working copy) only
+ * Changes become public only when series is published via workflow
+ */
 export const updateSeriesPageBlock = async (seriesId: string, data: any, options: FirebaseFirestore.SetOptions = { merge: true }) => {
-  return db.collection("series").doc(seriesId)
+  return db.collection("series-draft").doc(seriesId)
     .set(data, options)
     .catch(error => {
       throw { code: "error", message: "There was an error updating the block" };
     })
 };
 
+/**
+ * Get sections order from draft collection
+ */
 export const getSectionsOrder = async (seriesId: string): Promise<string[]> => {
-  return (await db.collection('series').doc(seriesId).get()).data()?.sectionsOrder || []
+  return (await db.collection('series-draft').doc(seriesId).get()).data()?.sectionsOrder || []
 }

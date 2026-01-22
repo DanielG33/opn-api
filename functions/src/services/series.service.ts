@@ -88,7 +88,9 @@ export const getAllPublicSeries = async () => {
       .get();
 
     const lastEpisode = lastEpisodeSnap.docs[0]?.data();
-    const seasonsSnap = await db.collection(`series/${seriesId}/seasons`).get();
+    const seasonsSnap = await db.collection(`series/${seriesId}/seasons`)
+      .orderBy('index', 'asc')
+      .get();
 
     return {
       id: seriesId,
@@ -196,7 +198,9 @@ export const getPublicSeriesById = async (seriesId: string) => {
     }
   })
 
-  const seasonsSnap = await db.collection(`series/${seriesId}/seasons`).get();
+  const seasonsSnap = await db.collection(`series/${seriesId}/seasons`)
+    .orderBy('index', 'asc')
+    .get();
   data.seasons = seasonsSnap.docs.map(s => ({ id: s.id, ...s.data() }));
 
   // TODO: return instead an array of all the blocks, based on sectionsOrder, with each block type for dynamic rendering
@@ -507,6 +511,14 @@ export const submitForReview = async (seriesId: string, producerId: string): Pro
       throw error;
     }
     
+    // Fetch seasons from subcollection for validation (only for season-based series)
+    if (draftData.type === 'season-based') {
+      const seasonsSnap = await db.collection(`series/${seriesId}/seasons`)
+        .orderBy('index', 'asc')
+        .get();
+      draftData.seasons = seasonsSnap.docs.map(s => ({ id: s.id, ...s.data() }));
+    }
+    
     // Validate draft content meets submission requirements
     const {canSubmitForReview} = require('../utils/series-publication.utils');
     const validation = canSubmitForReview(draftData);
@@ -754,6 +766,14 @@ export const publishUpdates = async (seriesId: string, producerId: string): Prom
       const error: any = new Error(`Cannot publish updates - series is ${currentStatus}. Use submit-review instead.`);
       error.code = 'STATUS_CONFLICT';
       throw error;
+    }
+    
+    // Fetch seasons from subcollection for validation (only for season-based series)
+    if (draftData.type === 'season-based') {
+      const seasonsSnap = await db.collection(`series/${seriesId}/seasons`)
+        .orderBy('index', 'asc')
+        .get();
+      draftData.seasons = seasonsSnap.docs.map(s => ({ id: s.id, ...s.data() }));
     }
     
     // Validate draft content

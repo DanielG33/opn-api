@@ -29,7 +29,8 @@ import {
   getSeason,
   createSeasonController,
   updateSeasonController,
-  deleteSeasonController
+  deleteSeasonController,
+  batchUpdateSeasonsController
 } from "../controllers/producer/season.controllers";
 import {
   getProfileMe,
@@ -132,8 +133,10 @@ producerRouter.post('/series/:seriesId/hide', hideSeriesController);
 // Seasons routes
 producerRouter.get("/series/:seriesId/seasons", listSeasons);
 producerRouter.get("/series/:seriesId/seasons/:seasonId", getSeason);
-producerRouter.post("/series/:seriesId/seasons", createSeasonController);
-producerRouter.patch("/series/:seriesId/seasons/:seasonId", updateSeasonController);
+producerRouter.post("/series/:seriesId/seasons", createSeasonController); // Deprecated: use batch
+// BATCH UPDATE: Preferred endpoint for atomic updates with index validation (1..N)
+producerRouter.put("/series/:seriesId/seasons/batch", batchUpdateSeasonsController);
+producerRouter.patch("/series/:seriesId/seasons/:seasonId", updateSeasonController); // Deprecated: use batch
 producerRouter.delete("/series/:seriesId/seasons/:seasonId", deleteSeasonController);
 
 // Assets routes

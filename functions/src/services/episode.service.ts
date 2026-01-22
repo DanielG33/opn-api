@@ -1,5 +1,5 @@
 // src/services/episode.service.ts
-import { db } from "../firebase";
+import { db, FieldValue } from "../firebase";
 import { SeriesPublicationStatus } from "../types/series-status";
 // import { format } from 'date-fns';
 
@@ -587,6 +587,24 @@ export const createEpisode = async (raw: any) => {
 
   const docRef = await db.collection("episodes").add(episode);
   
+  // Increment episodes counter in both series and series-draft collections
+  const seriesRef = db.collection('series').doc(raw.seriesId);
+  const seriesDraftRef = db.collection('series-draft').doc(raw.seriesId);
+  
+  // Use FieldValue.increment to atomically increment the counter
+  const increment = FieldValue.increment(1);
+  
+  await Promise.all([
+    seriesRef.update({ episodes: increment, updatedAt: Date.now() }).catch(() => {
+      // If series document doesn't exist yet, set episodes to 1
+      seriesRef.set({ episodes: 1, updatedAt: Date.now() }, { merge: true });
+    }),
+    seriesDraftRef.update({ episodes: increment, updatedAt: Date.now() }).catch(() => {
+      // If series-draft doesn't exist yet, set episodes to 1
+      seriesDraftRef.set({ episodes: 1, updatedAt: Date.now() }, { merge: true });
+    })
+  ]);
+  
   // Save subcontent sliders to the episode subcontent subcollection
   let createdSubcontent = [];
   if (subcontent && subcontent.length > 0) {
@@ -647,8 +665,37 @@ export const updateEpisode = async (id: string, data: any) => {
 };
 
 export const deleteEpisode = async (id: string) => {
-  //   await db.collection('episodes-draft').doc(id).delete();
-  await db.collection("episodes").doc(id).delete();
+  // Get episode data to retrieve seriesId before deletion
+  const episodeRef = db.collection("episodes").doc(id);
+  const episodeDoc = await episodeRef.get();
+  
+  if (!episodeDoc.exists) {
+    throw new Error("Episode not found");
+  }
+  
+  const episodeData = episodeDoc.data();
+  const seriesId = episodeData?.seriesId;
+  
+  // Delete the episode
+  await episodeRef.delete();
+  
+  // Decrement episodes counter in both series and series-draft collections
+  if (seriesId) {
+    const seriesRef = db.collection('series').doc(seriesId);
+    const seriesDraftRef = db.collection('series-draft').doc(seriesId);
+    
+    const decrement = FieldValue.increment(-1);
+    
+    await Promise.all([
+      seriesRef.update({ episodes: decrement, updatedAt: Date.now() }).catch((err) => {
+        console.error('Failed to decrement episodes in series collection:', err);
+      }),
+      seriesDraftRef.update({ episodes: decrement, updatedAt: Date.now() }).catch((err) => {
+        console.error('Failed to decrement episodes in series-draft collection:', err);
+      })
+    ]);
+  }
+  
   return { id };
 };
 

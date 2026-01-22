@@ -2,7 +2,6 @@
  * Series publication workflow validation and helpers
  */
 
-import {Series} from "../models/series";
 import {SeriesPublicationStatus, isValidStatusTransition} from "../types/series-status";
 
 /**
@@ -23,11 +22,50 @@ export interface ValidationResult {
 }
 
 /**
+ * Firestore series data structure (flat structure as stored in Firestore)
+ * This is the format received directly from Firestore without any parsing
+ */
+export interface FirestoreSeriesData {
+  id: string;
+  title?: string;
+  description?: string;
+  categories?: string[];
+  cover?: any;
+  type?: 'season-based' | 'limited';
+  publicationStatus?: SeriesPublicationStatus;
+  producerId?: string;
+  
+  // Series page fields (flat in Firestore)
+  heroBanner?: any[];
+  logo?: any;
+  socialNetworks?: any;
+  
+  // Collections
+  seasons?: any[];
+  episodes?: any[] | number;  // Can be array or count
+  
+  // Metadata
+  createdAt?: number;
+  updatedAt?: number;
+  publishedAt?: number;
+  submittedAt?: number;
+  reviewNotes?: string;
+  
+  [key: string]: any;
+}
+
+/**
  * Check if a series has all required fields to be submitted for review
  * This is the single source of truth for series completeness validation
- * Matches the frontend SeriesValidationService.canSubmitForReview()
+ * Works with flat Firestore data structure (not parsed/nested structure)
+ * Matches the frontend SeriesValidationService.canSubmitForReview() logic
+ * 
+ * NOTE: seriesData.seasons must be populated by caller (query subcollection)
+ * NOTE: seriesData.episodes is a number (count), not an array
  */
-export function canSubmitForReview(seriesData: any): ValidationResult {
+export function canSubmitForReview(seriesData: FirestoreSeriesData): ValidationResult {
+  console.log('Validating series for submission:', seriesData);
+  
   const errors: string[] = [];
 
   // Check current status allows submission
@@ -39,7 +77,7 @@ export function canSubmitForReview(seriesData: any): ValidationResult {
     errors.push('Published series cannot be resubmitted');
   }
 
-  // Core series fields validation
+  // Core series fields validation (flat structure from Firestore)
   if (!seriesData.title || seriesData.title.trim() === '') {
     errors.push('Title is required');
   }
@@ -52,40 +90,44 @@ export function canSubmitForReview(seriesData: any): ValidationResult {
     errors.push('At least one category is required');
   }
 
-  if (!seriesData.cover || !seriesData.cover.url) {
-    errors.push('Cover image is required');
-  }
+  // Cover image validation (optional - matches frontend)
+  // if (!seriesData.cover || !seriesData.cover.url) {
+  //   errors.push('Cover image is required');
+  // }
 
   if (!seriesData.type) {
     errors.push('Series type is required');
   }
 
-  // Series page completeness validation
-  // Hero banner validation
-  if (!seriesData.seriesPage?.hero || seriesData.seriesPage.hero.length === 0) {
+  // Series page completeness validation (flat structure from Firestore)
+  // Hero banner validation (stored as heroBanner in Firestore)
+  if (!seriesData.heroBanner || seriesData.heroBanner.length === 0) {
     errors.push('Hero banner is required');
   }
 
-  // Description section validation
-  if (!seriesData.seriesPage?.description?.title || 
-      !seriesData.seriesPage?.description?.description ||
-      !seriesData.seriesPage?.description?.logo?.url) {
-    errors.push('Series page description (title, description, and logo) is required');
+  // Logo validation (stored as logo in Firestore) - required for series page description section
+  if (!seriesData.logo || !seriesData.logo.url) {
+    errors.push('Logo is required');
   }
 
   // Social media validation - at least one social media link required
-  if (!seriesData.seriesPage?.socialMedia || 
-      !Object.values(seriesData.seriesPage.socialMedia).filter(val => Boolean(val)).length) {
+  // (stored as socialNetworks in Firestore)
+  if (!seriesData.socialNetworks || 
+      !Object.values(seriesData.socialNetworks).filter(val => Boolean(val)).length) {
     errors.push('At least one social media link is required');
   }
 
   // Seasons validation (for season-based series only)
+  // NOTE: seasons must be fetched from subcollection and passed in
   if (seriesData.type === 'season-based' && (!seriesData.seasons || seriesData.seasons.length === 0)) {
     errors.push('At least one season is required for season-based series');
   }
 
   // Episodes validation
-  if (!seriesData.episodes || seriesData.episodes.length === 0) {
+  // NOTE: episodes field is a number (count), not an array
+  const episodeCount = typeof seriesData.episodes === 'number' ? seriesData.episodes : 0;
+  
+  if (episodeCount === 0) {
     errors.push('At least one episode is required');
   }
 
@@ -99,7 +141,7 @@ export function canSubmitForReview(seriesData: any): ValidationResult {
  * Check if a user can approve a series
  * Placeholder for role-based access control
  */
-export function canApprove(series: Partial<Series>, userRole: string): ValidationResult {
+export function canApprove(series: FirestoreSeriesData, userRole: string): ValidationResult {
   const errors: string[] = [];
 
   // Only super admins can approve
@@ -122,7 +164,7 @@ export function canApprove(series: Partial<Series>, userRole: string): Validatio
  * Check if a user can reject a series
  * Placeholder for role-based access control
  */
-export function canReject(series: Partial<Series>, userRole: string): ValidationResult {
+export function canReject(series: FirestoreSeriesData, userRole: string): ValidationResult {
   const errors: string[] = [];
 
   // Only super admins can reject
@@ -144,7 +186,7 @@ export function canReject(series: Partial<Series>, userRole: string): Validation
 /**
  * Check if a user can hide a series
  */
-export function canHide(series: Partial<Series>, userRole: string, userId: string): ValidationResult {
+export function canHide(series: FirestoreSeriesData, userRole: string, userId: string): ValidationResult {
   const errors: string[] = [];
 
   // Producers can hide their own series, super admins can hide any
@@ -166,7 +208,7 @@ export function canHide(series: Partial<Series>, userRole: string, userId: strin
 /**
  * Check if a user can resubmit a series
  */
-export function canResubmit(series: Partial<Series>, userId: string): ValidationResult {
+export function canResubmit(series: FirestoreSeriesData, userId: string): ValidationResult {
   const errors: string[] = [];
 
   // Must be the series owner
@@ -196,7 +238,7 @@ export function canResubmit(series: Partial<Series>, userId: string): Validation
  * Check if a status transition is allowed for a user
  */
 export function canTransitionStatus(
-  series: Partial<Series>,
+  series: FirestoreSeriesData,
   targetStatus: SeriesPublicationStatus,
   userRole: string,
   userId: string
@@ -278,14 +320,14 @@ export function getUserRole(userData: any): UserRole {
 /**
  * Check if series is visible to public
  */
-export function isPubliclyVisible(series: Partial<Series>): boolean {
+export function isPubliclyVisible(series: FirestoreSeriesData): boolean {
   return series.publicationStatus === SeriesPublicationStatus.PUBLISHED;
 }
 
 /**
  * Check if series is visible to producer
  */
-export function isVisibleToProducer(series: Partial<Series>, producerId: string): boolean {
+export function isVisibleToProducer(series: FirestoreSeriesData, producerId: string): boolean {
   // Producers can see all their series regardless of status
   return series.producerId === producerId;
 }
@@ -293,7 +335,7 @@ export function isVisibleToProducer(series: Partial<Series>, producerId: string)
 /**
  * Check if series is visible to admin/super admin
  */
-export function isVisibleToAdmin(series: Partial<Series>): boolean {
+export function isVisibleToAdmin(series: FirestoreSeriesData): boolean {
   // Admins can see all series regardless of status
   return true;
 }
