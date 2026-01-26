@@ -1,7 +1,6 @@
 import {db} from "../firebase";
 import {Series} from "../models/series";
-import {formatSeriesId} from "../utils/format";
-import {slugify, isValidSlug, generateSlugWithSuffix, parseSlugSuffix} from "../utils/slug.utils";
+import {slugify, isValidSlug, generateSlugWithSuffix} from "../utils/slug.utils";
 import {SeriesPublicationStatus} from "../types/series-status";
 
 /* Helper functions for slug management */
@@ -113,6 +112,141 @@ export const getPublicSeriesById = async (seriesId: string) => {
   if (data.publicationStatus !== SeriesPublicationStatus.PUBLISHED) {
     return null;
   }
+
+  const sponsorsSnap = await db.collection(`series/${seriesId}/sponsors`).get();
+  const sponsors = sponsorsSnap.docs.reduce((acc: any, doc) => {
+    acc[doc.id] = { id: doc.id, ...doc.data() };
+    return acc;
+  }, {});
+
+  // Fetch series sliders marked for series page
+  const seriesSlidersSnap = await db.collection(`series/${seriesId}/sliders`)
+    .where('showOnSeriesPage', '==', true)
+    .get();
+  
+  const seriesSliders: any = {};
+  for (const sliderDoc of seriesSlidersSnap.docs) {
+    const sliderData = sliderDoc.data();
+    const items = [];
+    
+    // Fetch sub-content items for this slider
+    if (sliderData.items && Array.isArray(sliderData.items)) {
+      for (const itemId of sliderData.items) {
+        const itemDoc = await db.collection(`series/${seriesId}/subContent`).doc(itemId).get();
+        if (itemDoc.exists) {
+          items.push({ id: itemDoc.id, ...itemDoc.data() });
+        }
+      }
+    }
+    
+    seriesSliders[sliderDoc.id] = {
+      id: sliderDoc.id,
+      title: sliderData.title,
+      description: sliderData.description,
+      sponsor: sliderData.sponsor,
+      type: 'series_slider',
+      items
+    };
+  }
+
+  const blocks = data.sectionsOrder?.map((key: string) => {
+    if (key === 'sponsorsSlider') {
+      // Only include sponsorsSlider in blocks if there are visible (checked) sponsors
+      const visibleSponsors = (data.sponsorsSlider?.items || [])
+        .filter((item: any) => item.checked && sponsors[item.id])
+        .map((item: any) => sponsors[item.id]);
+      
+      if (visibleSponsors.length === 0) {
+        return null; // Don't render in public site if all sponsors are hidden
+      }
+      
+      return {
+        title: 'Sponsors carousel',
+        id: 'sponsorsSlider',
+        type: 'sponsorsSlider',
+        items: visibleSponsors
+      }
+    } else if (key.startsWith('banner') && data.banners[key]) {
+      return {
+        ...data.banners[key],
+        type: 'banner'
+      }
+    } else if (key.startsWith('slider') && data.episodes_sliders[key]) {
+      const slider = data.episodes_sliders[key];
+      return {
+        ...slider,
+        type: 'slider',
+        sponsor: slider.sponsor ? sponsors[slider.sponsor] : null
+      }
+    } else if (key.startsWith('gallery') && data.galleries[key]) {
+      const gallery = data.galleries[key];
+      return {
+        ...gallery,
+        type: 'gallery',
+        sponsor: gallery.sponsor ? sponsors[gallery.sponsor] : null
+      }
+    } else if (seriesSliders[key]) {
+      // Handle series slider blocks
+      const slider = seriesSliders[key];
+      return {
+        ...slider,
+        sponsor: slider.sponsor ? sponsors[slider.sponsor] : null
+      }
+    } else {
+      return null
+    }
+  })
+
+  const seasonsSnap = await db.collection(`series/${seriesId}/seasons`)
+    .orderBy('index', 'asc')
+    .get();
+  data.seasons = seasonsSnap.docs.map(s => ({ id: s.id, ...s.data() }));
+
+  // TODO: return instead an array of all the blocks, based on sectionsOrder, with each block type for dynamic rendering
+  if (data.episodes_sliders)
+    data.episodes_sliders = Object.values(data.episodes_sliders);
+  
+  if(data.banners)
+    data.banners = Object.values(data.banners);
+
+  if (data.galleries)
+    data.galleries = Object.values(data.galleries);
+
+  data.sponsorsSlider = {
+    title: 'Sponsors carousel',
+    id: 'sponsorsSlider',
+    items: (data.sponsorsSlider?.items || [])
+      .filter((item: any) => item.checked && sponsors[item.id])
+      .map((item: any) => sponsors[item.id])
+  };
+
+  data['blocks'] = blocks?.filter((block: any) => Boolean(block)) || [];
+
+  return data;
+};
+
+/**
+ * Get draft series by ID (for authorized preview)
+ * Reads from series-draft collection
+ * Used when mode=draft query parameter is set and user is authorized
+ * 
+ * IMPORTANT: This function ignores publicationStatus and works for ALL statuses:
+ * - DRAFT: Series being worked on
+ * - IN_REVIEW: Series submitted for review
+ * - PUBLISHED: Live series (allows previewing draft changes before publishing)
+ * - HIDDEN: Hidden series (allows producer to preview)
+ * - REJECTED: Rejected series (allows producer to see and fix issues)
+ * 
+ * Access control is handled by assertDraftAccess() which verifies:
+ * - User is authenticated
+ * - User is producer/admin
+ * - Producer owns the series (or is admin)
+ */
+export const getDraftSeriesById = async (seriesId: string) => {
+  const doc = await db.collection('series-draft').doc(seriesId).get();
+  if (!doc.exists) return null;
+
+  const data: any = { id: doc.id, ...doc.data() };
 
   const sponsorsSnap = await db.collection(`series/${seriesId}/sponsors`).get();
   const sponsors = sponsorsSnap.docs.reduce((acc: any, doc) => {

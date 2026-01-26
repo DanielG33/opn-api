@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { getEpisodeListByIds, getEpisodeById, getEpisodesBySeriesId, getEpisodesBySeasonId } from '../../services/episode.service';
+import { isDraftMode, assertDraftAccess } from '../../utils/preview.utils';
 
 export const getEpisodesById = async (req: Request, res: Response) => {
     const ids = String(req.query.ids || req.query.ids).split(',');
@@ -33,7 +34,22 @@ export const getEpisodesBySeries = async (req: Request, res: Response) => {
     const excludeEpisodeId = req.query.exclude as string;
 
     try {
-        const episodes = await getEpisodesBySeriesId(seriesId, excludeEpisodeId, true); // Check series publication status
+        // Check if draft mode is requested
+        let checkSeriesPublicationStatus = true;
+        
+        if (isDraftMode(req)) {
+            // Verify user has access to draft series
+            try {
+                await assertDraftAccess(req, res, seriesId);
+                // If authorized, don't check publication status (allow viewing draft series episodes)
+                checkSeriesPublicationStatus = false;
+            } catch (error) {
+                // Error response already sent by assertDraftAccess
+                return;
+            }
+        }
+        
+        const episodes = await getEpisodesBySeriesId(seriesId, excludeEpisodeId, checkSeriesPublicationStatus);
         res.status(200).json({ success: true, data: episodes });
     } catch (error) {
         console.error(error);
@@ -46,7 +62,22 @@ export const getEpisodesBySeason = async (req: Request, res: Response) => {
     const excludeEpisodeId = req.query.exclude as string;
 
     try {
-        const episodes = await getEpisodesBySeasonId(seriesId, seasonId, excludeEpisodeId, true); // Check series publication status
+        // Check if draft mode is requested
+        let checkSeriesPublicationStatus = true;
+        
+        if (isDraftMode(req)) {
+            // Verify user has access to draft series
+            try {
+                await assertDraftAccess(req, res, seriesId);
+                // If authorized, don't check publication status (allow viewing draft series episodes)
+                checkSeriesPublicationStatus = false;
+            } catch (error) {
+                // Error response already sent by assertDraftAccess
+                return;
+            }
+        }
+        
+        const episodes = await getEpisodesBySeasonId(seriesId, seasonId, excludeEpisodeId, checkSeriesPublicationStatus);
         res.status(200).json({ success: true, data: episodes });
     } catch (error) {
         console.error(error);

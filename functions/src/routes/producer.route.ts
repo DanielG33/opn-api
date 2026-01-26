@@ -44,6 +44,7 @@ import {
   updateSponsorController,
   deleteSponsorController
 } from "../controllers/producer/sponsor.controller";
+import { createHandoffToken } from "../controllers/admin/auth-handoff.controller";
 import {
   createAsset,
   listAssets,
@@ -110,6 +111,9 @@ producerRouter.use(authMiddleware);
 producerRouter.get("/", (req, res) => {
   res.json({ message: "Hello there!" });
 });
+
+// Auth handoff for cross-site preview
+producerRouter.post("/auth/handoff-token", createHandoffToken);
 
 // CMS pages routes
 

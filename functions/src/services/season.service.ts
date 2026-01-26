@@ -93,7 +93,7 @@ export const batchUpdateSeasons = async (seriesId: string, seasons: Partial<Seas
     
     if (season.id && existingIds.has(season.id)) {
       // Update existing
-      batch.update(seasonsRef.doc(season.id), seasonData);
+      batch.update(seasonsRef.doc(season.id), seasonData as any);
       results.push({ id: season.id, ...seasonData });
     } else {
       // Create new (ignore temporary client IDs like temp_*)

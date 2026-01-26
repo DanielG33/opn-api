@@ -128,7 +128,7 @@ export const batchUpdateSeasonsController = async (req: Request, res: Response) 
   
   try {
     const updated = await batchUpdateSeasons(seriesId, seasons);
-    res.json({
+    return res.json({
       success: true, 
       data: updated,
       message: `Successfully updated ${updated.length} season(s)`
@@ -136,7 +136,7 @@ export const batchUpdateSeasonsController = async (req: Request, res: Response) 
   } catch (err: any) {
     // Check if it's a validation error (400) or server error (500)
     const statusCode = err.message?.includes('Indexes must be sequential') ? 400 : 500;
-    res.status(statusCode).json({
+    return res.status(statusCode).json({
       success: false,
       error: {
         message: err.message || "Failed to batch update seasons",

@@ -7,6 +7,7 @@ import {
   deleteSeriesSubContent,
   getPublishedSeriesSubContent
 } from "../../services/series-subcontent.service";
+import { isDraftMode, assertDraftAccess } from "../../utils/preview.utils";
 
 // Get all sub-content for a series (admin)
 export const getSeriesSubContentController = async (req: Request, res: Response) => {
@@ -29,8 +30,23 @@ export const getPublishedSeriesSubContentController = async (req: Request, res: 
   try {
     const { seriesId } = req.params;
     
-    // This is called from public route, so check series publication status
-    const subContent = await getPublishedSeriesSubContent(seriesId, true);
+    // Check if draft mode is requested
+    let checkSeriesPublicationStatus = true;
+    
+    if (isDraftMode(req)) {
+      // Verify user has access to draft series
+      try {
+        await assertDraftAccess(req, res, seriesId);
+        // If authorized, don't check publication status (allow viewing draft series sub-content)
+        checkSeriesPublicationStatus = false;
+      } catch (error) {
+        // Error response already sent by assertDraftAccess
+        return;
+      }
+    }
+    
+    // This is called from public route, so check series publication status unless in draft mode
+    const subContent = await getPublishedSeriesSubContent(seriesId, checkSeriesPublicationStatus);
     res.json(subContent);
   } catch (error) {
     console.error("Error fetching published series sub-content:", error);
