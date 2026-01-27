@@ -112,12 +112,14 @@ export async function revoke(
 /**
  * Refreshes a token's expiration time by adding 12 hours from now.
  */
-export async function refresh(tokenId: string): Promise<void> {
+export async function refresh(tokenId: string): Promise<Timestamp> {
   const now = Timestamp.now();
   const expiresAt = previewTokenService.computeExpiry(now);
 
   const tokenRef = db.collection(COLLECTION_NAME).doc(tokenId);
   await tokenRef.update({ expiresAt });
+
+  return expiresAt;
 }
 
 /**

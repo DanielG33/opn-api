@@ -182,8 +182,19 @@ export const refreshPreviewToken = async (req: Request, res: Response) => {
       return res.status(403).json({ success: false, message: "Token does not belong to this series" });
     }
 
-    await previewTokenRepository.refresh(tokenId);
-    return res.json({ success: true, message: "Token refreshed successfully" });
+      if (tokenData.revokedAt) {
+        return res.status(409).json({ success: false, message: "Token has been revoked" });
+      }
+
+      const expiresAt = await previewTokenRepository.refresh(tokenId);
+      return res.json({
+        success: true,
+        message: "Token refreshed successfully",
+        data: {
+          expiresAt,
+          expiresAtMs: expiresAt.toMillis()
+        }
+      });
   } catch (error) {
     console.error("Error refreshing preview token:", error);
     return res.status(500).json({ success: false, message: "Failed to refresh preview token" });
