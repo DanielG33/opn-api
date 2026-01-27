@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { getAllPublicSeries, getPublicSeriesById, getDraftSeriesById } from '../../services/series.service';
 import { isDraftMode, assertDraftAccess } from '../../utils/preview.utils';
+import { previewTokenRepository } from '../../repositories/preview-token.repository';
 
 /**
  * PUBLIC ENDPOINT: List all published series
@@ -18,24 +19,49 @@ export const listPublicSeries = async (req: Request, res: Response) => {
 
 /**
  * PUBLIC ENDPOINT: Get series by ID
- * Supports draft mode via query parameter: ?mode=draft or ?mode=preview
+ * Supports three access modes:
  * 
- * Default behavior (no mode): 
- *   - Returns 404 if series publicationStatus != PUBLISHED
+ * 1. Default (no params): Returns PUBLISHED series only
+ * 2. Preview token (?previewToken=pt_...): Returns DRAFT series if token valid
+ *    - No authentication required
+ *    - Token validated server-side via previewTokenRepository.validateAndTouch()
+ *    - Auto-extends expiry by 12 hours on valid use
+ *    - Returns 403 with PREVIEW_TOKEN_INVALID if invalid/expired/revoked
+ * 3. Draft mode (legacy, to be deprecated): Requires Firebase Auth + producer ownership
  * 
- * Draft mode (?mode=draft or ?mode=preview):
- *   - Requires Firebase Auth (user must be authenticated)
- *   - Requires permissions: user must be producer (or super admin) AND must own the series
- *   - Reads from series-draft collection instead of series collection
- *   - Returns 404 for unauthorized/forbidden draft access (avoid leaking existence)
- *   - Works for ALL publication statuses (DRAFT, IN_REVIEW, PUBLISHED, HIDDEN, REJECTED)
- *     This allows producers to preview their series at any stage of the workflow
+ * Security:
+ * - Public cannot create/list/revoke tokens (those are producer-only endpoints)
+ * - Public can only submit tokens for validation via this endpoint
+ * - Validation happens server-side, no direct Firestore access from clients
  */
 export const getSeriesById = async (req: Request, res: Response) => {
   const { id } = req.params;
+  const previewToken = req.query.previewToken as string | undefined;
   
   try {
-    // Check if draft mode is requested
+    // Priority 1: Preview token (stateless, no auth required)
+    if (previewToken) {
+      const validToken = await previewTokenRepository.validateAndTouch(id, previewToken);
+      
+      if (!validToken) {
+        return res.status(403).json({
+          success: false,
+          error: {
+            code: 'PREVIEW_TOKEN_INVALID',
+            message: 'Preview token is invalid, expired, or revoked'
+          }
+        });
+      }
+      
+      // Token valid - return draft series
+      const series = await getDraftSeriesById(id);
+      if (!series) {
+        return res.status(404).json({ success: false, message: 'Series not found' });
+      }
+      return res.status(200).json({ success: true, data: series });
+    }
+    
+    // Priority 2: Draft mode with auth (legacy)
     if (isDraftMode(req)) {
       // Verify user has access to draft
       try {
@@ -53,7 +79,7 @@ export const getSeriesById = async (req: Request, res: Response) => {
       return res.status(200).json({ success: true, data: series });
     }
     
-    // Default: fetch published series only
+    // Priority 3: Default - published series only
     const series = await getPublicSeriesById(id);
     if (!series) {
       return res.status(404).json({ success: false, message: 'Series not found' });

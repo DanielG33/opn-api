@@ -44,7 +44,6 @@ import {
   updateSponsorController,
   deleteSponsorController
 } from "../controllers/producer/sponsor.controller";
-import { createHandoffToken } from "../controllers/admin/auth-handoff.controller";
 import {
   createAsset,
   listAssets,
@@ -103,6 +102,13 @@ import {
   addItemToSeriesSliderController,
   removeItemFromSeriesSliderController
 } from "../controllers/producer/series-sliders.controller";
+import {
+  listPreviewTokens,
+  generatePreviewToken,
+  revokePreviewToken,
+  refreshPreviewToken,
+  ensurePreviewToken
+} from "../controllers/producer/preview-tokens.controller";
 
 export const producerRouter = Router();
 
@@ -111,9 +117,6 @@ producerRouter.use(authMiddleware);
 producerRouter.get("/", (req, res) => {
   res.json({ message: "Hello there!" });
 });
-
-// Auth handoff for cross-site preview
-producerRouter.post("/auth/handoff-token", createHandoffToken);
 
 // CMS pages routes
 
@@ -133,6 +136,13 @@ producerRouter.post('/series/:seriesId/publish-updates', publishUpdatesControlle
 producerRouter.post('/series/:seriesId/approve', approveSeriesController);
 producerRouter.post('/series/:seriesId/reject', rejectSeriesController);
 producerRouter.post('/series/:seriesId/hide', hideSeriesController);
+
+// Preview tokens routes
+producerRouter.get('/series/:seriesId/preview-tokens', listPreviewTokens);
+producerRouter.post('/series/:seriesId/preview-tokens', generatePreviewToken);
+producerRouter.post('/series/:seriesId/preview-tokens/:tokenId/revoke', revokePreviewToken);
+producerRouter.post('/series/:seriesId/preview-tokens/:tokenId/refresh', refreshPreviewToken);
+producerRouter.post('/series/:seriesId/preview-token/ensure', ensurePreviewToken);
 
 // Seasons routes
 producerRouter.get("/series/:seriesId/seasons", listSeasons);
