@@ -1,25 +1,5 @@
 import { db } from "../firebase";
-
-// Sub-content interface for series-level sub-content
-interface SeriesSubContent {
-  id?: string;
-  title: string;
-  description?: string;
-  videoUrl?: string;
-  thumbnail?: {
-    id: string;
-    name: string;
-    type?: string;
-    url: string;
-  };
-  type: string; // video, article, gallery, etc.
-  // Content-level draft flag (independent of series publicationStatus)
-  // This marks individual subcontent items as draft vs published within the series
-  status: 'draft' | 'published';
-  seriesId: string;
-  createdAt: number;
-  updatedAt: number;
-}
+import type { SeriesSubContent } from "../contracts";
 
 // Get all sub-content for a series
 export const getSeriesSubContent = async (seriesId: string, filters?: { status?: string }) => {

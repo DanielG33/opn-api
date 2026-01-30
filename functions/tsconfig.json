@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "baseUrl": ".",
     "module": "NodeNext",
     "esModuleInterop": true,
     "moduleResolution": "nodenext",
@@ -9,11 +10,17 @@
     "sourceMap": true,
     "strict": true,
     "target": "es2017"
+    ,
+    "paths": {
+      "@opn/contracts": ["../shared/contracts/index"],
+      "@opn/contracts/*": ["../shared/contracts/*"]
+    }
   },
   "compileOnSave": true,
   "include": [
     "src",
-    "src/type"
+    "src/type",
+    "../shared/contracts/**/*.ts"
   ],
   "exclude": [
     "**/*.test.ts",

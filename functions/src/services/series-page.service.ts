@@ -20,7 +20,7 @@ export const getPageBlocks = async (seriesId: string) => {
 
       // Fetch series sliders marked for series page
       const seriesSlidersSnapshot = await db
-        .collection(`series/${seriesId}/sliders`)
+        .collection(`series/${seriesId}/subContentSliders`)
         .where('showOnSeriesPage', '==', true)
         .get();
       

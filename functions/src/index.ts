@@ -4,6 +4,7 @@ import app from "./app";
 
 // Import Cloud Functions
 export { onVideoRatingWrite } from "./functions/reactionTrigger";
+export { onSeriesSubContentUpdate, onSeriesSubContentDelete } from "./functions/subcontentSnapshotSync";
 
 // Start writing functions
 // https://firebase.google.com/docs/functions/typescript

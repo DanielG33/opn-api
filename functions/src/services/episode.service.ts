@@ -1,5 +1,8 @@
 // src/services/episode.service.ts
 import { db, FieldValue } from "../firebase";
+import type { SliderItem, SubContentSnapshot, UsagePointer } from "../contracts";
+import { TargetKind } from "../contracts";
+import { buildContentKeyForSubContent, buildPointerId } from "../utils/content-usage-helpers";
 import { SeriesPublicationStatus } from "../types/series-status";
 // import { format } from 'date-fns';
 
@@ -94,7 +97,7 @@ export const deleteSubcontentVideo = async (episodeId: string, videoId: string) 
   await videoRef.delete();
   
   // Also remove this video from any sliders that reference it
-  const slidersRef = db.collection(`episodes/${episodeId}/subcontentSliders`);
+  const slidersRef = db.collection(`episodes/${episodeId}/subContentSliders`);
   const slidersSnapshot = await slidersRef.get();
   
   const batch = db.batch();
@@ -132,7 +135,14 @@ export const getSubcontentVideoById = async (episodeId: string, videoId: string)
 
 // SUBCONTENT SLIDERS - Manage video collections/playlists (stored per episode)
 export const createSubcontentSlider = async (episodeId: string, sliderData: any) => {
-  const slidersRef = db.collection(`episodes/${episodeId}/subcontentSliders`);
+  const slidersRef = db.collection(`episodes/${episodeId}/subContentSliders`);
+  const episodeDoc = await db.collection("episodes").doc(episodeId).get();
+  const episodeSeriesId = episodeDoc.data()?.seriesId as string | undefined;
+
+  if (!episodeSeriesId) {
+    throw new Error("Episode missing seriesId");
+  }
+  const itemsInput = Array.isArray(sliderData.items) ? sliderData.items : [];
   
   // Get the highest order value to append new slider at the end
   let order = sliderData.order;
@@ -141,32 +151,182 @@ export const createSubcontentSlider = async (episodeId: string, sliderData: any)
     order = snapshot.empty ? 0 : (snapshot.docs[0].data().order || 0) + 1;
   }
   
+  const now = Date.now();
+  const sliderRef = slidersRef.doc();
+  const batch = db.batch();
+
+  const normalizedItems: SliderItem[] = [];
+  const itemKeys = new Set<string>();
+
+  for (const item of itemsInput) {
+    const subContentId = item?.subContentId;
+    if (!subContentId) {
+      throw new Error("Slider item missing required subContentId");
+    }
+
+    const itemKey = typeof item?.itemKey === "string" ? item.itemKey : crypto.randomUUID();
+    if (itemKeys.has(itemKey)) {
+      throw new Error("Duplicate itemKey in slider items");
+    }
+    itemKeys.add(itemKey);
+
+    const subContentRef = db.doc(`series/${episodeSeriesId}/subContent/${subContentId}`);
+    const subContentSnap = await subContentRef.get();
+    if (!subContentSnap.exists) {
+      throw new Error("Sub-content not found");
+    }
+
+    const snapshot = buildEpisodeSubContentSnapshot(episodeSeriesId, subContentId, subContentSnap.data());
+    const contentKey = buildContentKeyForSubContent(subContentId);
+
+    const normalizedItem: SliderItem = {
+      itemKey,
+      contentKey,
+      subContentId,
+      snapshot,
+      isActive: true,
+      isHidden: item?.isHidden,
+      createdAt: now,
+      updatedAt: now
+    };
+
+    normalizedItems.push(normalizedItem);
+
+    const pointer = buildEpisodeUsagePointer(episodeSeriesId, episodeId, sliderRef.id, itemKey);
+    const pointerId = buildPointerId(pointer);
+    batch.set(
+      db.doc(`series/${episodeSeriesId}/contentUsage/${contentKey}/pointers/${pointerId}`),
+      pointer,
+      { merge: true }
+    );
+  }
+
+  validateEpisodeSliderItems(normalizedItems, episodeSeriesId);
+
   const slider = {
     title: sliderData.title,
     description: sliderData.description || '',
     sponsor: sliderData.sponsor || null,
-    items: sliderData.items || [], // Store denormalized item objects
-    videoIds: (sliderData.items || []).map((item: any) => item.id), // Keep IDs for backwards compatibility
+    items: normalizedItems, // Store denormalized item objects (strict)
     order: order,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
+    createdAt: now,
+    updatedAt: now,
   };
 
-  const docRef = await slidersRef.add(slider);
-  return { id: docRef.id, ...slider };
+  batch.set(sliderRef, slider);
+  await batch.commit();
+  return { id: sliderRef.id, ...slider };
 };
 
 export const updateSubcontentSlider = async (episodeId: string, sliderId: string, sliderData: any) => {
-  const sliderRef = db.collection(`episodes/${episodeId}/subcontentSliders`).doc(sliderId);
+  const sliderRef = db.collection(`episodes/${episodeId}/subContentSliders`).doc(sliderId);
+  const episodeDoc = await db.collection("episodes").doc(episodeId).get();
+  const episodeSeriesId = episodeDoc.data()?.seriesId as string | undefined;
+  if (!episodeSeriesId) {
+    throw new Error("Episode missing seriesId");
+  }
   
   const updateData: any = {
     ...sliderData,
     updatedAt: Date.now(),
   };
 
-  // If items are provided, also update videoIds for backwards compatibility
   if (sliderData.items) {
-    updateData.videoIds = sliderData.items.map((item: any) => item.id);
+    await db.runTransaction(async tx => {
+      const sliderSnap = await tx.get(sliderRef);
+      if (!sliderSnap.exists) {
+        throw new Error("Slider not found");
+      }
+
+      const existingItems = (sliderSnap.data()?.items || []) as SliderItem[];
+      const existingByKey = new Map(existingItems.map(item => [item.itemKey, item] as const));
+
+      const nextItems: SliderItem[] = [];
+      const nextKeys = new Set<string>();
+      const now = Date.now();
+
+      for (const item of sliderData.items || []) {
+        const providedKey = typeof item?.itemKey === "string" ? item.itemKey : undefined;
+        const itemKey = providedKey || crypto.randomUUID();
+
+        if (nextKeys.has(itemKey)) {
+          throw new Error("Duplicate itemKey in slider items");
+        }
+        nextKeys.add(itemKey);
+
+        const existingItem = existingByKey.get(itemKey);
+
+        if (existingItem) {
+          if (item?.subContentId && item.subContentId !== existingItem.subContentId) {
+            throw new Error("Cannot change subContentId for existing slider item");
+          }
+
+          nextItems.push({
+            ...existingItem,
+            isActive: typeof item?.isActive === "boolean" ? item.isActive : existingItem.isActive,
+            isHidden: item?.isHidden !== undefined ? item.isHidden : existingItem.isHidden,
+            updatedAt: now
+          });
+          continue;
+        }
+
+        const subContentId = item?.subContentId;
+        if (!subContentId) {
+          throw new Error("Slider item missing required subContentId");
+        }
+
+        const subContentRef = db.doc(`series/${episodeSeriesId}/subContent/${subContentId}`);
+        const subContentSnap = await tx.get(subContentRef);
+        if (!subContentSnap.exists) {
+          throw new Error("Sub-content not found");
+        }
+
+        const snapshot = buildEpisodeSubContentSnapshot(episodeSeriesId, subContentId, subContentSnap.data());
+        const contentKey = buildContentKeyForSubContent(subContentId);
+
+        nextItems.push({
+          itemKey,
+          contentKey,
+          subContentId,
+          snapshot,
+          isActive: true,
+          isHidden: item?.isHidden,
+          createdAt: now,
+          updatedAt: now
+        });
+      }
+
+      validateEpisodeSliderItems(nextItems, episodeSeriesId);
+
+      const removedItems = existingItems.filter(item => !nextKeys.has(item.itemKey));
+      const addedItems = nextItems.filter(item => !existingByKey.has(item.itemKey));
+
+      tx.update(sliderRef, {
+        ...updateData,
+        items: nextItems,
+        updatedAt: now
+      });
+
+      for (const item of removedItems) {
+        const pointer = buildEpisodeUsagePointer(episodeSeriesId, episodeId, sliderId, item.itemKey);
+        const pointerId = buildPointerId(pointer);
+        const contentKey = item.contentKey || buildContentKeyForSubContent(item.subContentId);
+        tx.delete(db.doc(`series/${episodeSeriesId}/contentUsage/${contentKey}/pointers/${pointerId}`));
+      }
+
+      for (const item of addedItems) {
+        const pointer = buildEpisodeUsagePointer(episodeSeriesId, episodeId, sliderId, item.itemKey);
+        const pointerId = buildPointerId(pointer);
+        const contentKey = item.contentKey || buildContentKeyForSubContent(item.subContentId);
+        tx.set(
+          db.doc(`series/${episodeSeriesId}/contentUsage/${contentKey}/pointers/${pointerId}`),
+          pointer,
+          { merge: true }
+        );
+      }
+    });
+    const updated = await sliderRef.get();
+    return { id: updated.id, ...updated.data() };
   }
 
   await sliderRef.update(updateData);
@@ -175,14 +335,36 @@ export const updateSubcontentSlider = async (episodeId: string, sliderId: string
 };
 
 export const deleteSubcontentSlider = async (episodeId: string, sliderId: string) => {
-  const sliderRef = db.collection(`episodes/${episodeId}/subcontentSliders`).doc(sliderId);
-  await sliderRef.delete();
+  const sliderRef = db.collection(`episodes/${episodeId}/subContentSliders`).doc(sliderId);
+  const episodeDoc = await db.collection("episodes").doc(episodeId).get();
+  const episodeSeriesId = episodeDoc.data()?.seriesId as string | undefined;
+  if (!episodeSeriesId) {
+    throw new Error("Episode missing seriesId");
+  }
+
+  await db.runTransaction(async tx => {
+    const sliderSnap = await tx.get(sliderRef);
+    if (!sliderSnap.exists) {
+      return;
+    }
+
+    const items = (sliderSnap.data()?.items || []) as SliderItem[];
+    for (const item of items) {
+      const pointer = buildEpisodeUsagePointer(episodeSeriesId, episodeId, sliderId, item.itemKey);
+      const pointerId = buildPointerId(pointer);
+      const contentKey = item.contentKey || buildContentKeyForSubContent(item.subContentId);
+      tx.delete(db.doc(`series/${episodeSeriesId}/contentUsage/${contentKey}/pointers/${pointerId}`));
+    }
+
+    tx.delete(sliderRef);
+  });
+
   return { id: sliderId };
 };
 
 export const reorderSubcontentSliders = async (episodeId: string, sliders: { id: string; order: number }[], displayOrder?: any[]) => {
   const batch = db.batch();
-  const slidersRef = db.collection(`episodes/${episodeId}/subcontentSliders`);
+  const slidersRef = db.collection(`episodes/${episodeId}/subContentSliders`);
   
   sliders.forEach(slider => {
     const sliderRef = slidersRef.doc(slider.id);
@@ -207,7 +389,7 @@ export const reorderSubcontentSliders = async (episodeId: string, sliders: { id:
 
 export const getSubcontentSliders = async (episodeId: string, seriesId?: string) => {
   const snapshot = await db
-    .collection(`episodes/${episodeId}/subcontentSliders`)
+    .collection(`episodes/${episodeId}/subContentSliders`)
     .orderBy('order')
     .get();
   
@@ -248,45 +430,174 @@ export const getSubcontentSliders = async (episodeId: string, seriesId?: string)
 };
 
 export const addVideoToSlider = async (episodeId: string, sliderId: string, videoId: string) => {
-  const sliderRef = db.collection(`episodes/${episodeId}/subcontentSliders`).doc(sliderId);
-  const sliderDoc = await sliderRef.get();
-  
-  if (!sliderDoc.exists) {
-    throw new Error('Slider not found');
+  const sliderRef = db.collection(`episodes/${episodeId}/subContentSliders`).doc(sliderId);
+  const episodeDoc = await db.collection("episodes").doc(episodeId).get();
+  const episodeSeriesId = episodeDoc.data()?.seriesId as string | undefined;
+  if (!episodeSeriesId) {
+    throw new Error("Episode missing seriesId");
   }
-  
-  const sliderData = sliderDoc.data();
-  const currentVideoIds = sliderData?.videoIds || [];
-  
-  if (!currentVideoIds.includes(videoId)) {
-    const updatedVideoIds = [...currentVideoIds, videoId];
-    await sliderRef.update({ 
-      videoIds: updatedVideoIds,
-      updatedAt: Date.now()
+
+  const subContentRef = db.doc(`series/${episodeSeriesId}/subContent/${videoId}`);
+  const now = Date.now();
+
+  await db.runTransaction(async tx => {
+    const [sliderSnap, subContentSnap] = await Promise.all([
+      tx.get(sliderRef),
+      tx.get(subContentRef)
+    ]);
+
+    if (!sliderSnap.exists) {
+      throw new Error('Slider not found');
+    }
+
+    if (!subContentSnap.exists) {
+      throw new Error('Sub-content not found');
+    }
+
+    const currentItems = (sliderSnap.data()?.items || []) as SliderItem[];
+    const itemKey = crypto.randomUUID();
+    const snapshot = buildEpisodeSubContentSnapshot(episodeSeriesId, videoId, subContentSnap.data());
+    const contentKey = buildContentKeyForSubContent(videoId);
+
+    const nextItems = [
+      ...currentItems,
+      {
+        itemKey,
+        contentKey,
+        subContentId: videoId,
+        snapshot,
+        isActive: true,
+        createdAt: now,
+        updatedAt: now
+      }
+    ];
+
+    validateEpisodeSliderItems(nextItems, episodeSeriesId);
+
+    tx.update(sliderRef, {
+      items: nextItems,
+      updatedAt: now
     });
-  }
-  
-  return await getSubcontentSliders(episodeId);
+
+    const pointer = buildEpisodeUsagePointer(episodeSeriesId, episodeId, sliderId, itemKey);
+    const pointerId = buildPointerId(pointer);
+    tx.set(
+      db.doc(`series/${episodeSeriesId}/contentUsage/${contentKey}/pointers/${pointerId}`),
+      pointer,
+      { merge: true }
+    );
+  });
+
+  return await getSubcontentSliders(episodeId, episodeSeriesId);
 };
 
 export const removeVideoFromSlider = async (episodeId: string, sliderId: string, videoId: string) => {
-  const sliderRef = db.collection(`episodes/${episodeId}/subcontentSliders`).doc(sliderId);
-  const sliderDoc = await sliderRef.get();
-  
-  if (!sliderDoc.exists) {
-    throw new Error('Slider not found');
+  const sliderRef = db.collection(`episodes/${episodeId}/subContentSliders`).doc(sliderId);
+  const episodeDoc = await db.collection("episodes").doc(episodeId).get();
+  const episodeSeriesId = episodeDoc.data()?.seriesId as string | undefined;
+  if (!episodeSeriesId) {
+    throw new Error("Episode missing seriesId");
   }
-  
-  const sliderData = sliderDoc.data();
-  const currentVideoIds = sliderData?.videoIds || [];
-  const updatedVideoIds = currentVideoIds.filter((id: string) => id !== videoId);
-  
-  await sliderRef.update({ 
-    videoIds: updatedVideoIds,
-    updatedAt: Date.now()
+
+  await db.runTransaction(async tx => {
+    const sliderSnap = await tx.get(sliderRef);
+    if (!sliderSnap.exists) {
+      throw new Error('Slider not found');
+    }
+
+    const currentItems = (sliderSnap.data()?.items || []) as SliderItem[];
+    const updatedItems = currentItems.filter(item => item?.itemKey !== videoId);
+    const removedItem = currentItems.find(item => item?.itemKey === videoId);
+
+    tx.update(sliderRef, {
+      items: updatedItems,
+      updatedAt: Date.now()
+    });
+
+    if (removedItem) {
+      const pointer = buildEpisodeUsagePointer(episodeSeriesId, episodeId, sliderId, removedItem.itemKey);
+      const pointerId = buildPointerId(pointer);
+      const contentKey = removedItem.contentKey || buildContentKeyForSubContent(removedItem.subContentId);
+      tx.delete(db.doc(`series/${episodeSeriesId}/contentUsage/${contentKey}/pointers/${pointerId}`));
+    }
   });
   
-  return await getSubcontentSliders(episodeId);
+  return await getSubcontentSliders(episodeId, episodeSeriesId);
+};
+
+const buildEpisodeSubContentSnapshot = (seriesId: string, subContentId: string, data: any): SubContentSnapshot => {
+  if (data?.seriesId && data.seriesId !== seriesId) {
+    throw new Error("Sub-content seriesId mismatch");
+  }
+
+  if (!data?.title || !data?.type || !data?.status) {
+    throw new Error("Sub-content snapshot missing required fields");
+  }
+
+  return {
+    subContentId,
+    seriesId,
+    title: data.title,
+    description: data.description || "",
+    videoUrl: data.videoUrl,
+    thumbnail: data.thumbnail,
+    type: data.type,
+    status: data.status,
+    updatedAt: data.updatedAt || Date.now()
+  };
+};
+
+const buildEpisodeUsagePointer = (seriesId: string, episodeId: string, sliderId: string, itemKey: string): UsagePointer => ({
+  targetKind: TargetKind.EpisodeSubContentSlider,
+  seriesId,
+  episodeId,
+  sliderId,
+  itemKey,
+  createdAt: Date.now(),
+  updatedAt: Date.now()
+});
+
+const validateEpisodeSliderItems = (items: any[], seriesId?: string) => {
+  if (!Array.isArray(items)) {
+    throw new Error('Slider items must be an array');
+  }
+
+  const itemKeys = new Set<string>();
+
+  for (const item of items as SliderItem[]) {
+    if (!item?.itemKey || typeof item.itemKey !== 'string') {
+      throw new Error('Slider item missing required itemKey');
+    }
+    if (itemKeys.has(item.itemKey)) {
+      throw new Error('Duplicate itemKey in slider items');
+    }
+    itemKeys.add(item.itemKey);
+
+    if (!item?.contentKey || typeof item.contentKey !== 'string') {
+      throw new Error('Slider item missing required contentKey');
+    }
+
+    if (!item?.subContentId || typeof item.subContentId !== 'string') {
+      throw new Error('Slider item missing required subContentId');
+    }
+
+    const expectedContentKey = `subContent_${item.subContentId}`;
+    if (item.contentKey !== expectedContentKey) {
+      throw new Error('Slider item contentKey does not match subContentId');
+    }
+
+    if (!item?.snapshot) {
+      throw new Error('Slider item missing required snapshot');
+    }
+
+    if (seriesId && item.snapshot?.seriesId && item.snapshot.seriesId !== seriesId) {
+      throw new Error('Slider item snapshot seriesId mismatch');
+    }
+
+    if (typeof item.isActive !== 'boolean') {
+      throw new Error('Slider item missing required isActive flag');
+    }
+  }
 };
 
 // Helper function to update subcontent sliders in Firestore (DEPRECATED - keeping for backward compatibility)

@@ -120,24 +120,14 @@ export const getPublicSeriesById = async (seriesId: string) => {
   }, {});
 
   // Fetch series sliders marked for series page
-  const seriesSlidersSnap = await db.collection(`series/${seriesId}/sliders`)
+  const seriesSlidersSnap = await db.collection(`series/${seriesId}/subContentSliders`)
     .where('showOnSeriesPage', '==', true)
     .get();
   
   const seriesSliders: any = {};
   for (const sliderDoc of seriesSlidersSnap.docs) {
     const sliderData = sliderDoc.data();
-    const items = [];
-    
-    // Fetch sub-content items for this slider
-    if (sliderData.items && Array.isArray(sliderData.items)) {
-      for (const itemId of sliderData.items) {
-        const itemDoc = await db.collection(`series/${seriesId}/subContent`).doc(itemId).get();
-        if (itemDoc.exists) {
-          items.push({ id: itemDoc.id, ...itemDoc.data() });
-        }
-      }
-    }
+    const items = (sliderData.items || []).filter((item: any) => item?.isActive !== false);
     
     seriesSliders[sliderDoc.id] = {
       id: sliderDoc.id,
@@ -255,24 +245,14 @@ export const getDraftSeriesById = async (seriesId: string) => {
   }, {});
 
   // Fetch series sliders marked for series page
-  const seriesSlidersSnap = await db.collection(`series/${seriesId}/sliders`)
+  const seriesSlidersSnap = await db.collection(`series/${seriesId}/subContentSliders`)
     .where('showOnSeriesPage', '==', true)
     .get();
   
   const seriesSliders: any = {};
   for (const sliderDoc of seriesSlidersSnap.docs) {
     const sliderData = sliderDoc.data();
-    const items = [];
-    
-    // Fetch sub-content items for this slider
-    if (sliderData.items && Array.isArray(sliderData.items)) {
-      for (const itemId of sliderData.items) {
-        const itemDoc = await db.collection(`series/${seriesId}/subContent`).doc(itemId).get();
-        if (itemDoc.exists) {
-          items.push({ id: itemDoc.id, ...itemDoc.data() });
-        }
-      }
-    }
+    const items = sliderData.items || [];
     
     seriesSliders[sliderDoc.id] = {
       id: sliderDoc.id,
